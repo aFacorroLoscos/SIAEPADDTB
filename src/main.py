@@ -5,6 +5,7 @@ import numpy as np
 import math
 import shap
 import keras
+import pandas as pd
 
 # Biblioteca para Kfold, split de datos y labelice de las clases
 from sklearn.model_selection import StratifiedKFold
@@ -12,8 +13,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import label_binarize
 
 # Clases propias
-from Autoencoders.aeClass import Autoencoder
-from LoadData.loadMedicData import Datasets
+from aeClass import Autoencoder
+from loadMedicData import Datasets
 from MAUC import MAUC 
 import plot
 
@@ -69,7 +70,7 @@ def train_autoencoder(x_train, y_train,
                      batch_size, epochs, dropout,
                      size_layers_used, latent_space,
                      encoder_func, decoder_func,
-                     verbose, verbose_mode, number_classes):
+                     verbose, verbose_mode, number_classes, neuronal_network):
     # Creamos el autoencoder
     autoencoder = Autoencoder(
         input_shape = (np.shape(x_train)[1]),
@@ -84,13 +85,13 @@ def train_autoencoder(x_train, y_train,
     if verbose:
         autoencoder.summary()
 
+    if(not neuronal_network):
+        # Entrenamos el autoencoder
+        autoencoder.compile(learning_rate)
+        autoencoder.train(x_train, batch_size, epochs, verbose_mode)
 
-    # Entrenamos el autoencoder
-    autoencoder.compile(learning_rate)
-    autoencoder.train(x_train, batch_size, epochs, verbose_mode)
-
-    if verbose:
-        autoencoder.obtain_history(0, 0, "lossHistory")
+        if verbose:
+            autoencoder.obtain_history(0, 0, "lossHistory")
 
     # Entrenamos el autoencoder para que pueda
     # clasificar mediante fine tuning
@@ -108,6 +109,28 @@ def train_autoencoder(x_train, y_train,
         autoencoder.obtain_history(1, 1, "lossAccuracyFT")
 
     return autoencoder
+
+def compare_autoencoders(x_train, x_eval, y_train, y_eval,
+                             learning_rate, learning_rate_ft, 
+                             batch_size, epochs, dropout_value,
+                             size_layers_used, latent_space,
+                             encoder_func, decoder_func, 
+                             verbose,number_classes):   
+    autoencoder_entire = train_autoencoder(x_train, y_train, 
+                                   learning_rate, learning_rate_ft, 
+                                   batch_size, epochs, dropout_value, 
+                                   size_layers_used, latent_space, 
+                                   encoder_func, decoder_func, verbose, 1, number_classes, False)
+    
+    autoencoder_NN = train_autoencoder(x_train, y_train, 
+                                   learning_rate, learning_rate_ft, 
+                                   batch_size, epochs, dropout_value, 
+                                   size_layers_used, latent_space, 
+                                   encoder_func, decoder_func, verbose, 1, number_classes, True)
+    
+    print(get_metrics(autoencoder_entire.predict_fine_tuning(x_eval, 0), y_eval))
+    print(get_metrics(autoencoder_NN.predict_fine_tuning(x_eval, 0), y_eval))
+
 
 
 
@@ -128,11 +151,11 @@ def kFold_cross_validation_autoencoder(x_train, y_train, lr, lr_fine_tuning,
         autoencoder = train_autoencoder(x_train[train], y_train[train], lr, lr_fine_tuning, 
                                        batch_size, epochs, dropout_value, 
                                        size_layers_used, latent_space,
-                                       encoder_func, decoder_func, False, 0)
+                                       encoder_func, decoder_func, False, 0, False)
         
         y_pred = autoencoder.predict_fine_tuning(x_train[test], 0)
 
-        score = autoencoder.get_f1_score(y_pred, y_train[test])
+        score = f1_score(y_train[test], y_pred, average = "macro")
         scores.append(score)
 
         print('Fold: %2d, Training/Test Split Distribution: %s - %s, F1Score: %.3f' % (k+1, 
@@ -421,7 +444,7 @@ def compare_model_bar_graph(x_train, reduced_train, y_train,
                                  reduced_train, y_train, 
                                  reduced_eval, y_eval)
     
-    autoencoder_metrics = autoencoder.get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval)
+    autoencoder_metrics = get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval)
 
     # Dividimos las metricas para cada uno
     accuracy = [model_baseline_metrics[0], autoencoder_metrics[0], model_reduce_metrics[0]]
@@ -518,9 +541,9 @@ def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
                                    learning_rate, learning_rate_ft, 
                                    batch_size, epochs, dropout_value, 
                                    size_layers_used, latent_space, 
-                                   encoder_func, decoder_func, verbose, 1, number_classes)
+                                   encoder_func, decoder_func, verbose, 1, number_classes, False)
 
-    print(autoencoder.get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval))
+    print(get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval))
 
 
     #MAUC values
@@ -535,76 +558,99 @@ def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
     show_result(x_train, y_train, x_eval, y_eval,  "TADPOLE D4", "", number_classes)
     show_result(reduced_train, y_train, reduced_eval, y_eval, "TADPOLE D4", " + DL", number_classes)
 
+def usageCommand():
+    usage = "py main.py -GENERATE [-C] [-MRI] [-PET] [-DTI] [-BIO] [-sMCIpMCI] [-DELETE] [-useDX]]"
+
+    print("Usage for generate Data: " + usage, file=sys.stderr)
+
+    usage = "py main.py -LOAD pathTrainData pathTestData [-COMPARE] [-KFOLD] [-sMCIpMCI]"
+
+    print("Usage for train Data: " + usage, file=sys.stderr)
+    exit()
+
 def main(argv):
-
-    # Si los argumentos son correctos, se anyadiran los features a tener en cuenta
-    features =  read_file("features/others")
-    AD_or_MCI = 0
-    text = "CN/MCI/AD problem"
-    using_DX = 1
-    train_data_Path = "TrainTadpole.csv"
-    eval_data_Path = "EvalTadpole.csv"
-    feature_type_path = "Feature_Type.csv"
-    number_classes = 3
-    clinicPaths= ["Data/TADPOLE_D1_D2.csv", "Data/TADPOLE_D3.csv", "Data/TADPOLE_D4_corr.csv"]
-    for i in range(len(argv)):
-        if (argv[i] == "-C"):
-            features = features + read_file("features/cognitive")
-
-        elif (argv[i] == "-MRI"):
-            features = features + read_file("features/UCSFFSL")
-            features = features + read_file("features/UCSFFSX")
-           
-        elif (argv[i] == "-PET"):
-            features = features + read_file("features/BAIPETNMRC")
-            features = features + read_file("features/UCBERKELEYAV45-1451")
-            
-        elif (argv[i] == "-DTI"):
-            features = features + read_file("features/DTIROI")
-
-        elif (argv[i] == "-BIO"):
-            features = features + read_file("features/Biomarkers")
-
-        elif (argv[i] == "-sMCIpMCI"):
-            AD_or_MCI = 1
-            text = "sMCI/pMCI"
-            number_classes = 2
-        
-        elif (argv[i] == "-NoDX"):
-            using_DX = 0
-
-        elif (argv[i] == "-DELETE"):
-            if os.path.exists(train_data_Path):
-                os.remove(train_data_Path)
-            if os.path.exists(eval_data_Path):
-                os.remove(eval_data_Path)
-        
-    # Error por pantalla al usar mal el comando de ejecucion del programa
-    if (len(argv) > 8):
-        usage = "py main.py [-C] [-MRI] [-PET] [-DTI] [-BIO] [-sMCIpMCI] [-DELETE] [-NoDX]"
-
-        print("Usage: " + usage, file=sys.stderr)
-        exit()
-
-    trainData, evalData = [], []
+        # Error por pantalla al usar mal el comando de ejecucion del programa
+    if (len(argv) > 8 or len(argv) == 0):
+        usageCommand()
     dataSet = Datasets()
-    # Creamos el dataset de los datos médicos y prepocesamos los datos
-    [trainData, evalData] = dataSet.loadTADPOLE(clinicPaths, features, feature_type_path, AD_or_MCI, using_DX)
-    
+    # Si los argumentos son correctos, se anyadiran los features a tener en cuenta
+    if argv[0] == "-GENERATE":
+        ad_or_mci = 0
+        using_DX = 0
+        clinicPaths= ["../Data/TADPOLE_D1_D2.csv", "../Data/TADPOLE_D3.csv", "../Data/TADPOLE_D4_corr.csv"]
+        features =  read_file("../features/others")
+        feature_type_path = "../Feature_Type.csv"
+        for i in range(1, len(argv)):
+            if (argv[i] == "-C"):
+                features = features + read_file("../features/cognitive")
 
-    [xTrain, yTrain] = dataSet.divideData(trainData)
-    [xEval, yEval] = dataSet.divideData(evalData)
-    
-    sizeLayersUsed = [500,300]
-    latent_space = 150
+            elif (argv[i] == "-MRI"):
+                features = features + read_file("../features/UCSFFSL")
+                features = features + read_file("../features/UCSFFSX")
+            
+            elif (argv[i] == "-PET"):
+                features = features + read_file("../features/BAIPETNMRC")
+                features = features + read_file("../features/UCBERKELEYAV45-1451")
+                
+            elif (argv[i] == "-DTI"):
+                features = features + read_file("../features/DTIROI")
 
-    #hyperParametersAE(xTrain, yTrain, sizeLayersUsed, latent_space, "relu", "relu")
-    #exit()
-    evaluate_AE_with_shallow(xTrain, xEval, yTrain, yEval,
+            elif (argv[i] == "-BIO"):
+                features = features + read_file("../features/Biomarkers")
+
+            elif (argv[i] == "-sMCIpMCI"):
+                ad_or_mci = 1
+            
+            elif (argv[i] == "-useDX"):
+                using_DX = 1
+
+            elif (argv[i] == "-DELETE"):
+                train_data_Path = "../TrainTadpole.csv"
+                eval_data_Path = "../EvalTadpole.csv"
+                if os.path.exists(train_data_Path):
+                    os.remove(train_data_Path)
+                if os.path.exists(eval_data_Path):
+                    os.remove(eval_data_Path)
+
+        # Creamos el dataset de los datos médicos y prepocesamos los datos
+        [trainData, evalData] = dataSet.loadTADPOLE(clinicPaths, features, feature_type_path, ad_or_mci, using_DX)
+    elif argv[0] == "-LOAD":
+
+        trainData = pd.read_csv(argv[1], sep = ";")
+        evalData = pd.read_csv(argv[2], sep = ";")
+
+        [xTrain, yTrain] = dataSet.divideData(trainData)
+        [xEval, yEval] = dataSet.divideData(evalData)
+        
+        sizeLayersUsed = [500,300]
+        latent_space = 150
+        
+        text = "CN/MCI/AD problem"
+        number_classes = 3
+        if len(argv) >= 5 and argv[4] == "-sMCIpMCI":
+            number_classes = 2
+            text = "sMCI/pMCI problem"
+        
+        if len(argv) >= 4 and argv[3] == "-KFDOL":
+            hyperParametersAE(xTrain, yTrain, sizeLayersUsed, latent_space, "relu", "relu")
+        elif len(argv) >= 4 and argv[3] == "-COMPARE":
+            compare_autoencoders(xTrain, xEval, yTrain, yEval,
                            LEARNINGRATE, LEARNINGRATEFT,
                            BATCHSIZE, EPOCHS, DROPOUTVALUE,
                            sizeLayersUsed,  latent_space, 
-                           "relu", "relu", 1, text, number_classes)
+                           "relu", "relu", False, number_classes)
+        else:
+            sizeLayersUsed = [500,300]
+            latent_space = 150
+            evaluate_AE_with_shallow(xTrain, xEval, yTrain, yEval,
+                           LEARNINGRATE, LEARNINGRATEFT,
+                           BATCHSIZE, EPOCHS, DROPOUTVALUE,
+                           sizeLayersUsed,  latent_space, 
+                           "relu", "relu", False, text, number_classes)
+
+    else:
+        usageCommand()
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

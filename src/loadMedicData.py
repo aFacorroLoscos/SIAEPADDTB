@@ -130,8 +130,8 @@ class Datasets:
             Post: Se devuelve un dataframe valido para el prepocesamiento de los datos
         """
         def loadTADPOLE(self, medicalPaths, features, featureTypePath, problemType, usingDX):
-            TrainDataPath = "TrainTadpole.csv"
-            EvalDataPath = "EvalTadpole.csv"
+            TrainDataPath = "../TrainTadpole.csv"
+            EvalDataPath = "../EvalTadpole.csv"
             if not os.path.exists(TrainDataPath) or not os.path.exists(EvalDataPath):
                 # Load D1_D2 evaluation data set
                 D1D2Path = Path(medicalPaths[0])
@@ -457,7 +457,7 @@ class Datasets:
             dfQuant = pd.DataFrame()
             dfCat = pd.DataFrame()
             
-            dataTypeDf = pd.read_csv(Path ("Feature_Type.csv"), sep=';')
+            dataTypeDf = pd.read_csv(Path ("../Feature_Type.csv"), sep=';')
             totalValues = len(df.index)
 
             for (columnName, columnData) in df.items():

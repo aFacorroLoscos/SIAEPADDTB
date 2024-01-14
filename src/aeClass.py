@@ -14,7 +14,6 @@ from tensorflow.keras import initializers
 from keras.layers import Layer, Input, InputSpec, BatchNormalization, Dropout, Dense
 from keras import regularizers, activations, initializers,constraints, Sequential
 from keras import backend as K
-from tensorflow.python.keras.callbacks import EarlyStopping
 
 # Metricas
 from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score
@@ -343,7 +342,6 @@ class Autoencoder:
     """
     def predict(self, data):
         return self._model.predict(data)
-
     
     """
         Pre: x_Data es un conjunto de datos
@@ -387,24 +385,6 @@ class Autoencoder:
         new_model = tf.keras.models.Sequential(layers[:-1])
 
         return new_model.predict(x_Data)
-
-    """
-        Pre: y_test es un conjunto de variables de respuesta y y_pred es un conjunto de variables predictoras
-        Post: Muestra las metricas del autoencoder y devuelve la exactitud 
-    """
-    def get_f1_score(self, y_pred, y_test):
-        return f1_score(y_test, y_pred, average = "macro")
-    
-    def get_metrics(self, y_pred, y_test):
-
-        clasifier_metrics = []
-
-        clasifier_metrics.append(accuracy_score(y_test, y_pred))
-        clasifier_metrics.append(precision_score(y_test, y_pred, average='macro', zero_division = 0))
-        clasifier_metrics.append(recall_score(y_test, y_pred, average='macro', zero_division = 0))
-        clasifier_metrics.append(f1_score(y_test, y_pred, average='macro'))
-        
-        return clasifier_metrics
     
     def obtain_history(self, numModel, metricUsed, nameFile):
         model_trained = self._autoencoder_train
