@@ -1,0 +1,156 @@
+Using: Dropout 0.3 , LRate: 0.0001, Epochs: 20 , BatchSize: 32
+Fold:  1, Training/Test Split Distribution: 6744 - 750, F1Score: 0.797
+Fold:  2, Training/Test Split Distribution: 6744 - 750, F1Score: 0.849
+Fold:  3, Training/Test Split Distribution: 6744 - 750, F1Score: 0.818
+Fold:  4, Training/Test Split Distribution: 6744 - 750, F1Score: 0.806
+Fold:  5, Training/Test Split Distribution: 6745 - 749, F1Score: 0.782
+Fold:  6, Training/Test Split Distribution: 6745 - 749, F1Score: 0.803
+Fold:  7, Training/Test Split Distribution: 6745 - 749, F1Score: 0.839
+Fold:  8, Training/Test Split Distribution: 6745 - 749, F1Score: 0.832
+Fold:  9, Training/Test Split Distribution: 6745 - 749, F1Score: 0.796
+Fold: 10, Training/Test Split Distribution: 6745 - 749, F1Score: 0.817
+Cross-Validation F1Score: 0.814 +/- 0.020 // ESTO FUE CON 
+kernel_regularizer = keras.regularizers.l2(0.001), EN LA CAPA DE BOTTLENECK
+
+
+Using: Dropout 0.3 , LRate: 0.001, Epochs: 10 , BatchSize: 32
+Fold:  1, Training/Test Split Distribution: 6744 - 750, F1Score: 0.843
+Fold:  2, Training/Test Split Distribution: 6744 - 750, F1Score: 0.811
+Fold:  3, Training/Test Split Distribution: 6744 - 750, F1Score: 0.814
+Fold:  4, Training/Test Split Distribution: 6744 - 750, F1Score: 0.782
+Fold:  5, Training/Test Split Distribution: 6745 - 749, F1Score: 0.797
+Fold:  6, Training/Test Split Distribution: 6745 - 749, F1Score: 0.803
+Fold:  7, Training/Test Split Distribution: 6745 - 749, F1Score: 0.835
+Fold:  8, Training/Test Split Distribution: 6745 - 749, F1Score: 0.761
+Fold:  9, Training/Test Split Distribution: 6745 - 749, F1Score: 0.756
+Fold: 10, Training/Test Split Distribution: 6745 - 749, F1Score: 0.866
+Cross-Validation F1Score: 0.807 +/- 0.033 // ESTO SIN KERNEL REGULARIZER
+
+Using: Dropout 0.3 , LRate: 0.0001, Epochs: 25 , BatchSize: 32
+Fold:  1, Training/Test Split Distribution: 6744 - 750, F1Score: 0.828
+Fold:  2, Training/Test Split Distribution: 6744 - 750, F1Score: 0.811
+Fold:  3, Training/Test Split Distribution: 6744 - 750, F1Score: 0.815
+Fold:  4, Training/Test Split Distribution: 6744 - 750, F1Score: 0.818
+Fold:  5, Training/Test Split Distribution: 6745 - 749, F1Score: 0.799
+Fold:  6, Training/Test Split Distribution: 6745 - 749, F1Score: 0.818
+Fold:  7, Training/Test Split Distribution: 6745 - 749, F1Score: 0.836
+Fold:  8, Training/Test Split Distribution: 6745 - 749, F1Score: 0.828
+Fold:  9, Training/Test Split Distribution: 6745 - 749, F1Score: 0.812
+Fold: 10, Training/Test Split Distribution: 6745 - 749, F1Score: 0.795
+Cross-Validation F1Score: 0.816 +/- 0.012
+// Utilizando He normal en el encoder y L2 regularizer en la capa bottleneck
+
+
+
+-------------------
+
+
+python3 main.py -C -MRI -PET -DTI -BIO -NoDX
+Result obtained using Random Forest model:
+Cross-Validation accuracy: 0.908 +/- 0.017
+Cross-Validation precision: 0.916 +/- 0.016
+Cross-Validation recall: 0.906 +/- 0.018
+Cross-Validation meanF1: 0.910 +/- 0.016
+
+
+python3 main.py -C -NoDX
+Result obtained using Random Forest model:
+Cross-Validation accuracy: 0.931 +/- 0.028
+Cross-Validation precision: 0.936 +/- 0.024
+Cross-Validation recall: 0.931 +/- 0.029
+Cross-Validation meanF1: 0.933 +/- 0.027
+
+python3 main.py -MRI -NoDX
+Cross-Validation accuracy: 0.768 +/- 0.024
+Cross-Validation precision: 0.793 +/- 0.036
+Cross-Validation recall: 0.764 +/- 0.023
+Cross-Validation meanF1: 0.771 +/- 0.024
+
+
+python3 main.py -PET -NoDX
+Cross-Validation accuracy: 0.667 +/- 0.026
+Cross-Validation precision: 0.685 +/- 0.020
+Cross-Validation recall: 0.673 +/- 0.034
+Cross-Validation meanF1: 0.675 +/- 0.026
+
+
+python3 main.py -DTI -NoDX
+Cross-Validation accuracy: 0.673 +/- 0.033
+Cross-Validation precision: 0.692 +/- 0.026
+Cross-Validation recall: 0.679 +/- 0.041
+Cross-Validation meanF1: 0.681 +/- 0.034
+
+
+python3 main.py -BIO -NoDX
+Cross-Validation accuracy: 0.669 +/- 0.030
+Cross-Validation precision: 0.687 +/- 0.025
+Cross-Validation recall: 0.675 +/- 0.036
+Cross-Validation meanF1: 0.676 +/- 0.030
+
+python3 main.py -C -MRI -NoDX
+Result obtained using Random Forest model:
+Cross-Validation accuracy: 0.921 +/- 0.020
+Cross-Validation precision: 0.929 +/- 0.015
+Cross-Validation recall: 0.918 +/- 0.022
+Cross-Validation meanF1: 0.923 +/- 0.020
+
+python3 main.py -C -PET -NoDX
+Result obtained using Random Forest model:
+Cross-Validation accuracy: 0.930 +/- 0.028
+Cross-Validation precision: 0.934 +/- 0.025
+Cross-Validation recall: 0.930 +/- 0.029
+Cross-Validation meanF1: 0.932 +/- 0.027
+
+
+python3 main.py -C -DTI -NoDX
+Result obtained using Random Forest model:
+Cross-Validation accuracy: 0.930 +/- 0.028
+Cross-Validation precision: 0.935 +/- 0.025
+Cross-Validation recall: 0.930 +/- 0.028
+Cross-Validation meanF1: 0.932 +/- 0.027
+
+python3 main.py -C -BIO -NoDX
+Result obtained using Random Forest model:
+Cross-Validation accuracy: 0.931 +/- 0.030
+Cross-Validation precision: 0.936 +/- 0.026
+Cross-Validation recall: 0.930 +/- 0.031
+Cross-Validation meanF1: 0.932 +/- 0.029
+
+
+python3 main.py -C -BIO -PET -MRI -NoDX
+Cross-Validation accuracy: 0.923 +/- 0.022
+Cross-Validation precision: 0.931 +/- 0.017
+Cross-Validation recall: 0.920 +/- 0.025
+Cross-Validation meanF1: 0.924 +/- 0.022
+
+python3 main.py -C -BIO -PET -NoDX
+Cross-Validation accuracy: 0.931 +/- 0.030
+Cross-Validation precision: 0.935 +/- 0.026
+Cross-Validation recall: 0.930 +/- 0.031
+Cross-Validation meanF1: 0.932 +/- 0.029
+
+python3 main.py -C -BIO -MRI -NoDX
+Cross-Validation accuracy: 0.921 +/- 0.021
+Cross-Validation precision: 0.930 +/- 0.016
+Cross-Validation recall: 0.918 +/- 0.024
+Cross-Validation meanF1: 0.923 +/- 0.021
+
+python3 main.py -C -BIO -DTI -NoDX
+Cross-Validation accuracy: 0.932 +/- 0.029
+Cross-Validation precision: 0.937 +/- 0.025
+Cross-Validation recall: 0.931 +/- 0.031
+Cross-Validation meanF1: 0.934 +/- 0.028
+
+python3 main.py -C -BIO -PET -DTI -NoDX
+Cross-Validation accuracy: 0.932 +/- 0.028
+Cross-Validation precision: 0.936 +/- 0.025
+Cross-Validation recall: 0.932 +/- 0.029
+Cross-Validation meanF1: 0.934 +/- 0.027
+
+python3 main.py -C -BIO -PET -MRI -NoDX
+Cross-Validation accuracy: 0.923 +/- 0.022
+Cross-Validation precision: 0.931 +/- 0.017
+Cross-Validation recall: 0.920 +/- 0.025
+Cross-Validation meanF1: 0.924 +/- 0.022
+
+
