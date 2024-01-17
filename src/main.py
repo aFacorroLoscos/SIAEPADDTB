@@ -7,6 +7,9 @@ import shap
 import keras
 import pandas as pd
 
+# Para calcular el tiempo de aprendizaje
+import time
+
 # Biblioteca para Kfold, split de datos y labelice de las clases
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
@@ -92,7 +95,6 @@ def train_autoencoder(x_train, y_train,
 
         if verbose:
             autoencoder.obtain_history(0, 0, "lossHistory")
-
     # Entrenamos el autoencoder para que pueda
     # clasificar mediante fine tuning
     autoencoder.fine_tuning(number_classes)
@@ -181,17 +183,17 @@ def kFold_cross_validation_shallow(model, x_values, y_values, model_name):
 
         metrics = get_metrics_model(model,
                                    x_values[train], y_values[train],
-                                   x_values[test], y_values[test])
+                                   x_values[test], y_values[test], model_name)
         
         accuracys.append(metrics[0])
         precisions.append(metrics[1])
         recalls.append(metrics[2])
         meansF1.append(metrics[3])
         
-        # print('Fold: %2d, Training/Test Split Distribution: %s - %s, Accuracy: %.3f' % (k+1, 
-        #                                                                                 np.shape(yTrain[train])[0],
-        #                                                                                 np.shape(yTrain[test])[0],
-        #                                                                                 metrics[0]))
+        print('Fold: %2d, Training/Test Split Distribution: %s - %s, Accuracy: %.3f' % (k+1, 
+                                                                                         np.shape(yTrain[train])[0],
+                                                                                         np.shape(yTrain[test])[0],
+                                                                                         metrics[0]))
     
     print("Result obtained using " + model_name + " model:")
     print('Cross-Validation accuracy: %.3f +/- %.3f' %(np.mean(accuracys), np.std(accuracys)))
@@ -239,23 +241,34 @@ def hyper_parameters_autoencoder(x_train, y_train, size_layers, latent_space, en
     Pre: y_test es un conjunto de variables de respuesta y y_pred es un conjunto de variables predictoras
     Post: Devuelve un vector que contiene las metricas comparando las variables predictoras y respuestas
 """
-def get_metrics (y_test, y_pred):
+def get_metrics(y_test, y_pred):
     clasifier_metrics = []
     clasifier_metrics.append(accuracy_score(y_test, y_pred))
     clasifier_metrics.append(precision_score(y_test, y_pred, average='macro', zero_division = 0))
     clasifier_metrics.append(recall_score(y_test, y_pred, average='macro', zero_division = 0))
     clasifier_metrics.append(f1_score(y_test, y_pred, average='macro'))
     return clasifier_metrics
+
+def show_metrics(metrics):
+    print("Accuracy: " + str(metrics[0]))
+    print("Precision: " + str(metrics[1]))
+    print("Recall: " + str(metrics[2]))
+    print("F1 Score: " + str(metrics[3]))
 """
     Pre: x_train e x_test contiene las variables de cada observacion, y_train e y_test contiene la clase a la que
          pertenece cada observacion.
     Post: Devuelve las metricas del modelo de clasificación
 """
-def get_metrics_model(model, x_train, y_train, x_test, y_test):
-    return get_metrics(y_test, predict_values(model, x_train, y_train, x_test))
+def get_metrics_model(model, x_train, y_train, x_test, y_test, model_name):
+    metrics = get_metrics(y_test, predict_values(model, x_train, y_train, x_test, model_name))
+    print("Metrics obtained:")
+    show_metrics(metrics)
+    return metrics
 
-def predict_values(model, x_train, y_train, x_test):
+def predict_values(model, x_train, y_train, x_test, model_name):
+    t0  = time.time()
     model.fit(x_train, y_train)
+    print("Training Time from " + model_name + ":", time.time()-t0)
     return model.predict(x_test)
 
 def get_prob(model, x_train, y_train, x_test):
@@ -352,28 +365,28 @@ def compare_models_roc_curve(x_train, reduced_train, y_train,
 
 def compare_models_MAUC(x_train, reduced_train, y_train, 
                         x_eval, reduced_eval, y_eval, 
-                        autoencoder, filename):
+                        autoencoder, filename, number_classes):
     
     compare_model_MAUC(x_train, reduced_train, y_train, 
                        x_eval, reduced_eval, y_eval, 
                        autoencoder, KNeighborsClassifier(n_neighbors=3), 
-                       "KNN", filename)
+                       "KNN", filename, number_classes)
     compare_model_MAUC(x_train, reduced_train, y_train, 
                        x_eval, reduced_eval, y_eval, 
                        autoencoder, DecisionTreeClassifier(), 
-                       "DT", filename)
+                       "DT", filename, number_classes)
     compare_model_MAUC(x_train, reduced_train, y_train, 
                        x_eval, reduced_eval, y_eval,
                        autoencoder, RandomForestClassifier(), 
-                       "RF", filename)
+                       "RF", filename, number_classes)
     compare_model_MAUC(x_train, reduced_train, y_train,
                        x_eval, reduced_eval, y_eval,
                        autoencoder, GradientBoostingClassifier(n_estimators = 20, learning_rate = 0.3), 
-                       "GB", filename)
+                       "GB", filename, number_classes)
     compare_model_MAUC(x_train, reduced_train, y_train,
                        x_eval, reduced_eval, y_eval,
                        autoencoder, svm.SVC(kernel='linear', probability = True), 
-                       "SVM", filename)
+                       "SVM", filename, number_classes)
     
 def plot_matrix(x_train, y_train, x_test, y_test, filename, using_DL, number_classes):
     labels = ["CN","MCI","AD"]
@@ -381,12 +394,12 @@ def plot_matrix(x_train, y_train, x_test, y_test, filename, using_DL, number_cla
         labels = ["sMCI", "pMCI"]
 
 
-    plot.plot_confusion_matrix(y_test, predict_values(KNeighborsClassifier(n_neighbors = number_classes), x_train, y_train, x_test), "KNN" + using_DL, labels)
-    plot.plot_confusion_matrix(y_test, predict_values(RandomForestClassifier(), x_train, y_train, x_test), "RF" + using_DL,labels)
-    plot.plot_confusion_matrix(y_test, predict_values(DecisionTreeClassifier(), x_train, y_train, x_test), "DT" + using_DL,labels)
+    plot.plot_confusion_matrix(y_test, predict_values(KNeighborsClassifier(n_neighbors = number_classes), x_train, y_train, x_test, "KNN" + using_DL), "KNN" + using_DL, labels)
+    plot.plot_confusion_matrix(y_test, predict_values(RandomForestClassifier(), x_train, y_train, x_test, "RF" + using_DL), "RF" + using_DL,labels)
+    plot.plot_confusion_matrix(y_test, predict_values(DecisionTreeClassifier(), x_train, y_train, x_test, "DT" + using_DL), "DT" + using_DL,labels)
     plot.plot_confusion_matrix(y_test, predict_values(GradientBoostingClassifier(n_estimators = 20, learning_rate = 0.3), 
-                                            x_train, y_train, x_test), "GB" + using_DL, labels)
-    plot.plot_confusion_matrix(y_test, predict_values(svm.SVC(kernel='linear'), x_train, y_train, x_test), "SVM" + using_DL, labels)
+                                            x_train, y_train, x_test, "GB" + using_DL), "GB" + using_DL, labels)
+    plot.plot_confusion_matrix(y_test, predict_values(svm.SVC(kernel='linear'), x_train, y_train, x_test, "SVM" + using_DL), "SVM" + using_DL, labels)
 
 
 
@@ -402,29 +415,30 @@ def show_result_bar_graph(x_train, y_train, x_eval, y_eval, filename, using_DL, 
     # Obtenemos las metricas, los valores predecidos y el modelo ya entrenado
     knn_metrics = get_metrics_model(KNeighborsClassifier(n_neighbors = number_classes),
                                    x_train, y_train, 
-                                   x_eval, y_eval)
+                                   x_eval, y_eval, "KNN " + using_DL)
 
     svm_metrics = get_metrics_model(svm.SVC(kernel='linear'),
                                    x_train, y_train, 
-                                   x_eval, y_eval)
+                                   x_eval, y_eval, "SVM " + using_DL)
 
     dt_metrics = get_metrics_model(DecisionTreeClassifier(),
                                   x_train, y_train, 
-                                  x_eval, y_eval)
+                                  x_eval, y_eval, "DT " + using_DL)
 
     rf_metrics = get_metrics_model(RandomForestClassifier(),
                                   x_train, y_train, 
-                                x_eval, y_eval)
+                                x_eval, y_eval, "RF " + using_DL)
 
     gb_metrics = get_metrics_model(GradientBoostingClassifier(n_estimators = 20, learning_rate = 0.3),
                                   x_train, y_train, 
-                                  x_eval, y_eval)
+                                  x_eval, y_eval, "GB " + using_DL)
     
     # Dividimos las metricas para cada uno
     accuracy = [knn_metrics[0], svm_metrics[0], dt_metrics[0], rf_metrics[0], gb_metrics[0]]
     precision = [knn_metrics[1], svm_metrics[1], dt_metrics[1], rf_metrics[1], gb_metrics[1]]
     recall = [knn_metrics[2], svm_metrics[2], dt_metrics[2], rf_metrics[2], gb_metrics[2]]
     f1_score = [knn_metrics[3], svm_metrics[3], dt_metrics[3], rf_metrics[3], gb_metrics[3]]
+    
     x_ticks = ['kNN' + using_DL,'SVM' + using_DL,'Decision Trees' + using_DL, \
               'Random Forest' + using_DL, 'Gradient Boosting' + using_DL]
     
@@ -438,11 +452,11 @@ def compare_model_bar_graph(x_train, reduced_train, y_train,
     
     model_baseline_metrics = get_metrics_model(clone(model),
                                  x_train, y_train, 
-                                 x_eval, y_eval)
+                                 x_eval, y_eval, model_name)
     
     model_reduce_metrics = get_metrics_model(clone(model),
                                  reduced_train, y_train, 
-                                 reduced_eval, y_eval)
+                                 reduced_eval, y_eval, model_name + " Reduced")
     
     autoencoder_metrics = get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval)
 
@@ -476,13 +490,13 @@ def compare_model_roc_curve(x_train, reduced_train, y_train,
 def compare_model_MAUC(x_train, reduced_train, y_train, 
                      x_eval, reduced_eval, y_eval, 
                      autoencoder, model, 
-                     model_name, filename):
+                     model_name, filename, number_classes):
 
-    bsl_MAUC = MAUC(got_zip_class_prob(y_eval, get_prob(clone(model),x_train, y_train, x_eval)) , 3)
+    bsl_MAUC = MAUC(got_zip_class_prob(y_eval, get_prob(clone(model),x_train, y_train, x_eval)) , number_classes)
 
-    red_MAUC = MAUC(got_zip_class_prob(y_eval, get_prob(clone(model),reduced_train, y_train, reduced_eval)) , 3)
+    red_MAUC = MAUC(got_zip_class_prob(y_eval, get_prob(clone(model),reduced_train, y_train, reduced_eval)) , number_classes)
 
-    ae_MAUC = MAUC(got_zip_class_prob(y_eval, autoencoder.predictProbs(x_eval,0)), 3)
+    ae_MAUC = MAUC(got_zip_class_prob(y_eval, autoencoder.predict_proba(x_eval,0)), number_classes)
 
     MAUC_list = [bsl_MAUC, ae_MAUC, red_MAUC]
     x_ticks = [model_name,'Autoencoder', model_name + ' + DL']
@@ -543,9 +557,6 @@ def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
                                    size_layers_used, latent_space, 
                                    encoder_func, decoder_func, verbose, 1, number_classes, False)
 
-    print(get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval))
-
-
     #MAUC values
     # Devolvemos los datos reducidos mediante el autoencoder
     reduced_train = autoencoder.return_reduce_attribute(x_train)
@@ -555,6 +566,8 @@ def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
                           x_eval, reduced_eval, y_eval, autoencoder, "TADPOLE D4", number_classes)
     compare_models_bar_graph(x_train, reduced_train, y_train, 
                           x_eval, reduced_eval, y_eval, autoencoder, "TADPOLE D4", number_classes)
+    compare_models_MAUC(x_train, reduced_train, y_train, x_eval, reduced_eval, y_eval, 
+                        autoencoder, "TADPOLE D4", number_classes)
     show_result(x_train, y_train, x_eval, y_eval,  "TADPOLE D4", "", number_classes)
     show_result(reduced_train, y_train, reduced_eval, y_eval, "TADPOLE D4", " + DL", number_classes)
 
@@ -603,6 +616,15 @@ def main(argv):
             
             elif (argv[i] == "-useDX"):
                 using_DX = 1
+            
+            elif (argv[i] == "-ALL"):
+                features = features + read_file("../features/cognitive")
+                features = features + read_file("../features/UCSFFSL")
+                features = features + read_file("../features/UCSFFSX")
+                features = features + read_file("../features/BAIPETNMRC")
+                features = features + read_file("../features/UCBERKELEYAV45-1451")
+                features = features + read_file("../features/DTIROI")
+                features = features + read_file("../features/Biomarkers")
 
             elif (argv[i] == "-DELETE"):
                 train_data_Path = "../TrainTadpole.csv"
@@ -619,6 +641,8 @@ def main(argv):
         trainData = pd.read_csv(argv[1], sep = ";")
         evalData = pd.read_csv(argv[2], sep = ";")
 
+        print(trainData.shape)
+        exit()
         [xTrain, yTrain] = dataSet.divideData(trainData)
         [xEval, yEval] = dataSet.divideData(evalData)
         
@@ -627,13 +651,20 @@ def main(argv):
         
         text = "CN/MCI/AD problem"
         number_classes = 3
-        if len(argv) >= 5 and argv[4] == "-sMCIpMCI":
-            number_classes = 2
-            text = "sMCI/pMCI problem"
+        ejecution_mode = 0
+
+        for i in range(1, len(argv)):
+            if (argv[i] == "-sMCIpMCI"):
+                number_classes = 2
+                text = "sMCI/pMCI problem"
+            elif (argv[i] == "-KFDOL"):
+                ejecution_mode = 1
+            elif (argv[i] == "-COMPARE"):
+                ejecution_mode = 2
         
-        if len(argv) >= 4 and argv[3] == "-KFDOL":
+        if ejecution_mode == 1:
             hyperParametersAE(xTrain, yTrain, sizeLayersUsed, latent_space, "relu", "relu")
-        elif len(argv) >= 4 and argv[3] == "-COMPARE":
+        elif ejecution_mode == 2:
             compare_autoencoders(xTrain, xEval, yTrain, yEval,
                            LEARNINGRATE, LEARNINGRATEFT,
                            BATCHSIZE, EPOCHS, DROPOUTVALUE,
