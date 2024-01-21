@@ -386,6 +386,11 @@ class Autoencoder:
 
         return new_model.predict(x_Data)
     
+    """
+        Pre: ---
+        Post: Crea un archivo que contiene la grafica de la metrican segun metricUsed
+              Dependiendo del valor de numModel tendremos en cuenta el modelo baseline o fine tuned
+    """
     def obtain_history(self, numModel, metricUsed, nameFile):
         model_trained = self._autoencoder_train
         metric_name = self._model.metrics_names[metricUsed]
@@ -402,35 +407,14 @@ class Autoencoder:
         plt.title('Training and Validation ' + metric_name)
         plt.legend()
         plt.savefig(nameFile + '.png')
-     
-class DenseTranspose(keras.layers.Layer):
-    """
-        Pre: ---
-        Post: Creamos la clase Dense Tranpose
-    """
-    def __init__(self,
-                 dense,
-                 activation = None, **kwargs):
-        self.dense = dense
-        self.activation = keras.activations.get(activation)
-        self.kernel_regularizer = keras.regularizers.l2(0.001)
-        super().__init__(**kwargs)
-    
-    """
-        Pre: ---
-        Post: Definimos el valor de los bias.
-    """
-    def build(self, batch_input_shape):
-        self.biases = self.add_weight(name = "bias",
-                                      shape = [self.dense.input_shape[-1]],
-                                      initializer = "zeros")
-        super().build(batch_input_shape)
-    def call(self, inputs):
-        z = tf.matmul(inputs, self.dense.weights[0], transpose_b = True)
-        return self.activation(z + self.biases)
 
-
+# Clase DenseTied para enlazar matriz de pesos entre modelos encoder y decoder
 class DenseTied(Layer):
+
+    """
+        Pre: ---
+        Post: Inicializacion de la clase DenseTied
+    """
     def __init__(self, units,
                  activation=None,
                  use_bias=True,
@@ -460,6 +444,12 @@ class DenseTied(Layer):
         self.input_spec = InputSpec(min_ndim=2)
         self.supports_masking = True
 
+    """
+        Pre: ---
+        Post: Funcion build donde se inicializa todos los valores
+              Aqui es donde unimos la matriz de valores weights a la clase
+              Tambien inicializamos los bias del modelo
+    """
     def build(self, input_shape):
         assert len(input_shape) >= 2
         input_dim = input_shape[-1]
@@ -484,6 +474,10 @@ class DenseTied(Layer):
 
         self.built = True
 
+    """
+        Pre: ---
+        Post: Devuelve una tupla con el tamaño NxM que debe tener la salida
+    """
     def compute_output_shape(self, input_shape):
         assert input_shape and len(input_shape) >= 2
         assert input_shape[-1] == self.units
@@ -491,6 +485,11 @@ class DenseTied(Layer):
         output_shape[-1] = self.units
         return tuple(output_shape)
 
+    """
+        Pre: ---
+        Post: Llamada de la funcion donde devuelve la salida del modelo
+              en base a los valores de weights, bias y entrada de datos
+    """
     def call(self, inputs):
         output = K.dot(inputs, self.kernel)
         if self.use_bias:

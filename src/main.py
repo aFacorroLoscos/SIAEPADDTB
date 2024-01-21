@@ -43,7 +43,6 @@ BATCHSIZE = 32
 EPOCHS = 25
 DROPOUTVALUE = 0.1
 
-# Layers que se utilizan para cbig_cross_sectional_features
 
 """
     Pre: fileNamePath es un path valido a un archivo de texto
@@ -56,9 +55,17 @@ def read_file(file_name_path):
         file_obj.close()
         return words
 
-
+"""
+    Pre: array es un array de valores numericos
+    Post: Devuelve un array con valores numericos que se le ha aplicado el proceso one hot
+"""
 def one_hot(array, num_classes):
     return np.squeeze(np.eye(num_classes)[array.reshape(-1)])
+
+
+# ------------------------------------------------------------------- #
+#                   ENTRENAMIENTO DEL AUTOENCODER                     #
+# ------------------------------------------------------------------- #
 
 """
     Pre: x_train contiene las variables de cada observacion, y_train contiene la clase a la que
@@ -112,29 +119,9 @@ def train_autoencoder(x_train, y_train,
 
     return autoencoder
 
-def compare_autoencoders(x_train, x_eval, y_train, y_eval,
-                             learning_rate, learning_rate_ft, 
-                             batch_size, epochs, dropout_value,
-                             size_layers_used, latent_space,
-                             encoder_func, decoder_func, 
-                             verbose,number_classes):   
-    autoencoder_entire = train_autoencoder(x_train, y_train, 
-                                   learning_rate, learning_rate_ft, 
-                                   batch_size, epochs, dropout_value, 
-                                   size_layers_used, latent_space, 
-                                   encoder_func, decoder_func, verbose, 1, number_classes, False)
-    
-    autoencoder_NN = train_autoencoder(x_train, y_train, 
-                                   learning_rate, learning_rate_ft, 
-                                   batch_size, epochs, dropout_value, 
-                                   size_layers_used, latent_space, 
-                                   encoder_func, decoder_func, verbose, 1, number_classes, True)
-    
-    print(get_metrics(autoencoder_entire.predict_fine_tuning(x_eval, 0), y_eval))
-    print(get_metrics(autoencoder_NN.predict_fine_tuning(x_eval, 0), y_eval))
-
-
-
+# ------------------------------------------------------------------- #
+#                   FUNCIONES KFOLD CROSS VALIDATION                  #
+# ------------------------------------------------------------------- #
 
 """
     Pre: x_train contiene las variables de cada observacion, y_train contiene la clase a la que
@@ -168,7 +155,12 @@ def kFold_cross_validation_autoencoder(x_train, y_train, lr, lr_fine_tuning,
     print('\n\nCross-Validation F1Score: %.3f +/- %.3f' %(np.mean(scores), np.std(scores)), flush=True)
     return(np.mean(scores))
 
-
+"""
+    Pre: x_values contiene las variables de cada observacion, y_values contiene la clase a la que
+         pertenece cada observacion. Model es un modelo de aprendizaje tradicional
+    Post: Muestra por pantala la distribucion de valores de train y test y la exactitud
+          de cada uno de los folds y la exactitud del algoritmo Cross Validation
+"""
 def kFold_cross_validation_shallow(model, x_values, y_values, model_name):
     
     strtfdKFold = StratifiedKFold(n_splits=10)
@@ -191,8 +183,8 @@ def kFold_cross_validation_shallow(model, x_values, y_values, model_name):
         meansF1.append(metrics[3])
         
         print('Fold: %2d, Training/Test Split Distribution: %s - %s, Accuracy: %.3f' % (k+1, 
-                                                                                         np.shape(yTrain[train])[0],
-                                                                                         np.shape(yTrain[test])[0],
+                                                                                         np.shape(y_values[train])[0],
+                                                                                         np.shape(y_values[test])[0],
                                                                                          metrics[0]))
     
     print("Result obtained using " + model_name + " model:")
@@ -201,6 +193,14 @@ def kFold_cross_validation_shallow(model, x_values, y_values, model_name):
     print('Cross-Validation recall: %.3f +/- %.3f' %(np.mean(recalls), np.std(recalls)))
     print('Cross-Validation meanF1: %.3f +/- %.3f\n ' %(np.mean(meansF1), np.std(meansF1)))
 
+
+"""
+    Pre: x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion.
+         Latent_space debe ser mayor a 0
+         El tamaño de encoder_act_func y decoder_act_func debe ser el mismo
+    Post: Muestra por pantalla el mejor conjunto de hyper parametros para entrenar el modelo Autoencoder
+"""
 def hyper_parameters_autoencoder(x_train, y_train, size_layers, latent_space, encoder_act_func, decoder_act_func):
     learningrate = [0.01, 0.001, 0.0001]
     learningrate_fine_tuning = [0.001, 0.0001, 0.00001]
@@ -237,6 +237,10 @@ def hyper_parameters_autoencoder(x_train, y_train, size_layers, latent_space, en
     print("Epochs: " + str(best_hyper_parameters[4]))
 
 
+# ------------------------------------------------------------------- #
+#                   FUNCIONES PARA CALCULAR METRICAS                  #
+# ------------------------------------------------------------------- #
+
 """
     Pre: y_test es un conjunto de variables de respuesta y y_pred es un conjunto de variables predictoras
     Post: Devuelve un vector que contiene las metricas comparando las variables predictoras y respuestas
@@ -249,11 +253,16 @@ def get_metrics(y_test, y_pred):
     clasifier_metrics.append(f1_score(y_test, y_pred, average='macro'))
     return clasifier_metrics
 
+"""
+    Pre: El tamaño de metrics debe ser estrictamente mayor a 4
+    Post: Muestra las metricas por oantalla
+"""
 def show_metrics(metrics):
     print("Accuracy: " + str(metrics[0]))
     print("Precision: " + str(metrics[1]))
     print("Recall: " + str(metrics[2]))
     print("F1 Score: " + str(metrics[3]))
+
 """
     Pre: x_train e x_test contiene las variables de cada observacion, y_train e y_test contiene la clase a la que
          pertenece cada observacion.
@@ -265,32 +274,60 @@ def get_metrics_model(model, x_train, y_train, x_test, y_test, model_name):
     show_metrics(metrics)
     return metrics
 
+"""
+    Pre: x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion. x_test contiene las variables de test
+         model_name es el nombre de cada modelo
+    Post: Devuelve las variables y de cada uno de los valores del conjunto x_test
+"""
 def predict_values(model, x_train, y_train, x_test, model_name):
     t0  = time.time()
     model.fit(x_train, y_train)
     print("Training Time from " + model_name + ":", time.time()-t0)
     return model.predict(x_test)
 
+"""
+    Pre: x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion. x_test contiene las variables de test
+    Post: Devuelve la probabilidad de cada una de las clases del conjunto x_test
+"""
 def get_prob(model, x_train, y_train, x_test):
     return model.fit(x_train, y_train).predict_proba(x_test)
 
+"""
+    Pre: x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion. x_eval contiene las variables de eval y y_eval a que
+         clase pertenece cada uno de los valores del conjunto x_eval
+    Post: Devuelve los valores fpr,tpr y auc roc del conjunto de evaluacion
+"""
 def got_roc_values_model(model, x_train, y_train, x_eval, y_eval):
     model.fit(x_train, y_train)
     yPred = model.predict(x_eval)
     return got_roc_values(y_eval, yPred)
 
+"""
+    Pre: x_data contiene las variables de cada observacion, y_data contiene la clase a la que
+         pertenece cada observacion.
+    Post: Devuelve los valores fpr,tpr y auc roc del conjunto de evaluacion
+"""
 def got_roc_values(x_data, y_data):
     fpr, tpr, thresholds = roc_curve(x_data, y_data)
     roc_auc = auc(fpr, tpr)
     return fpr, tpr, roc_auc
 
-def got_roc_values_multiclass(num_classes, y_test, y_scores, clases_numbers):
+"""
+    Pre: y_test contiene el conjunto de las clases de cada uno de los valores de x_test
+         y_probs contiene la probabilidad de pertenecer a cada una de las clases de y_test
+         num_classes es el numero de clases totales que contiene y_test
+    Post: Devuelve los valores fpr,tpr y auc roc del conjunto de evaluacion
+"""
+def got_roc_values_multiclass(num_classes, y_test, y_probs):
     y_test_onehot = one_hot(y_test, num_classes)
     fpr = [0] * num_classes
     tpr = [0] * num_classes
     roc_auc = [0] * num_classes
     for i in range(num_classes):
-        fpr[i], tpr[i], _ = roc_curve(y_test_onehot[:, i], y_scores[:, i])
+        fpr[i], tpr[i], _ = roc_curve(y_test_onehot[:, i], y_probs[:, i])
         roc_auc[i] = auc(fpr[i], tpr[i])
 
     fpr_grid = np.linspace(0.0, 1.0, 1000)
@@ -306,13 +343,96 @@ def got_roc_values_multiclass(num_classes, y_test, y_scores, clases_numbers):
 
     return fpr_grid, mean_tpr, auc(fpr_grid, mean_tpr)
 
-def got_zip_class_prob(class_list, prob_ist):
+"""
+    Pre: clast_list y prob_list debe tener el mismo tamaño
+    Post: Devuelve un array en que cada valor iesimo esta formado po
+          el valor iesimo de class_list y el valor iesimo de prob_list
+"""
+def got_zip_class_prob(class_list, prob_list):
     zip_true_label_probs = []
     for x in range(len(class_list)):
-        zip_true_label_probs += [(class_list[x], list(prob_ist[x]))]
+        zip_true_label_probs += [(class_list[x], list(prob_list[x]))]
     
     return zip_true_label_probs
 
+# ------------------------------------------------------------------- #
+#                   FUNCIONES PARA COMPARAR MODELOS                   #
+# ------------------------------------------------------------------- #
+
+"""
+    Pre: x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion.
+         learning_rate, learning_rate_ft, batch_size, epochs y num_out_puts  debe ser 
+         estrictamente mayor que 0. El tamaño de endcoder_func, decoder_func y 
+         size_layers_used debe ser el mismo.  
+    Post: Las metricas entre un modelo Red Neuronal y un modelo Autoencoder
+"""
+def compare_autoencoders(x_train, x_eval, y_train, y_eval,
+                             learning_rate, learning_rate_ft, 
+                             batch_size, epochs, dropout_value,
+                             size_layers_used, latent_space,
+                             encoder_func, decoder_func, 
+                             verbose,number_classes):   
+    autoencoder_entire = train_autoencoder(x_train, y_train, 
+                                   learning_rate, learning_rate_ft, 
+                                   batch_size, epochs, dropout_value, 
+                                   size_layers_used, latent_space, 
+                                   encoder_func, decoder_func, verbose, 1, number_classes, False)
+    
+    autoencoder_NN = train_autoencoder(x_train, y_train, 
+                                   learning_rate, learning_rate_ft, 
+                                   batch_size, epochs, dropout_value, 
+                                   size_layers_used, latent_space, 
+                                   encoder_func, decoder_func, verbose, 1, number_classes, True)
+    print("Metricas modelo Autoencoder:")
+    show_metrics(get_metrics(autoencoder_entire.predict_fine_tuning(x_eval, 0), y_eval))
+    print("Metricas modelo Red Neuronal:")
+    show_metrics(get_metrics(autoencoder_NN.predict_fine_tuning(x_eval, 0), y_eval))
+
+"""
+    Pre:x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion, el mismo caso para x_eval e y_eval
+         learning_rate, learning_rate_ft, batch_size, epochs y size_layers_used debe ser 
+         estrictamente mayor que 0. El tamaño de endcoder_func, decoder_func y 
+         size_layers_used debe ser el mismo. number_classes debe ser equivalente
+         al numero de clases distintas del conjunto y
+    Post: Realiza la comparacion del modelo Autoencoder con los Shallow Models
+"""
+def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
+                             learning_rate, learning_rate_ft, 
+                             batch_size, epochs, dropout_value,
+                             size_layers_used, latent_space,
+                             encoder_func, decoder_func, verbose,
+                             text, number_classes):
+    
+    # Entrenamos autoencoder
+    autoencoder = train_autoencoder(x_train, y_train, 
+                                   learning_rate, learning_rate_ft, 
+                                   batch_size, epochs, dropout_value, 
+                                   size_layers_used, latent_space, 
+                                   encoder_func, decoder_func, verbose, 1, number_classes, False)
+
+    # Devolvemos los datos reducidos mediante el autoencoder
+    reduced_train = autoencoder.return_reduce_attribute(x_train)
+    reduced_eval = autoencoder.return_reduce_attribute(x_eval)
+
+    # Comparamos modelos y mostramos resultados
+    compare_models_roc_curve(x_train, reduced_train, y_train, 
+                          x_eval, reduced_eval, y_eval, autoencoder, "TADPOLE D4", number_classes)
+    compare_models_bar_graph(x_train, reduced_train, y_train, 
+                          x_eval, reduced_eval, y_eval, autoencoder, "TADPOLE D4", number_classes)
+    compare_models_MAUC(x_train, reduced_train, y_train, x_eval, reduced_eval, y_eval, 
+                        autoencoder, "TADPOLE D4", number_classes)
+    show_result(x_train, y_train, x_eval, y_eval,  "TADPOLE D4", "", number_classes)
+    show_result(reduced_train, y_train, reduced_eval, y_eval, "TADPOLE D4", " + DL", number_classes)
+
+"""
+    Pre:x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion, el mismo caso para x_eval, y_eval y reduced_train, reduced_eval
+         autoencoder es el modelo Autoencoder creado. Filename es el nombrel del fichero utilizado
+         number_classes debe ser equivalente al numero de clases distintas del conjunto y
+    Post: Realiza la comparacion del modelo Autoencoder con los Shallow Model
+"""
 def compare_models_bar_graph(x_train, reduced_train, y_train, 
                              x_eval, reduced_eval, y_eval, 
                              autoencoder, filename, number_classes):
@@ -337,7 +457,13 @@ def compare_models_bar_graph(x_train, reduced_train, y_train,
                             x_eval, reduced_eval, y_eval, 
                             autoencoder, svm.SVC(kernel='linear'), 
                             "SVM", filename)
-    
+"""
+    Pre:x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion, el mismo caso para x_eval, y_eval y reduced_train, reduced_eval
+         autoencoder es el modelo Autoencoder creado. Filename es el nombrel del fichero utilizado
+         number_classes debe ser equivalente al numero de clases distintas del conjunto y
+    Post: Realiza la comparacion del modelo Autoencoder con los Shallow Model
+"""
 def compare_models_roc_curve(x_train, reduced_train, y_train, 
                              x_eval, reduced_eval, y_eval, 
                              autoencoder, filename, number_classes):
@@ -362,7 +488,13 @@ def compare_models_roc_curve(x_train, reduced_train, y_train,
                             x_eval, reduced_eval, y_eval, 
                             autoencoder, svm.SVC(kernel='linear', probability = True), 
                             "SVM", filename, number_classes)
-
+"""
+    Pre:x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion, el mismo caso para x_eval, y_eval y reduced_train, reduced_eval
+         autoencoder es el modelo Autoencoder creado. Filename es el nombrel del fichero utilizado
+         number_classes debe ser equivalente al numero de clases distintas del conjunto y
+    Post: Realiza la comparacion del modelo Autoencoder con los Shallow Model
+"""
 def compare_models_MAUC(x_train, reduced_train, y_train, 
                         x_eval, reduced_eval, y_eval, 
                         autoencoder, filename, number_classes):
@@ -387,6 +519,91 @@ def compare_models_MAUC(x_train, reduced_train, y_train,
                        x_eval, reduced_eval, y_eval,
                        autoencoder, svm.SVC(kernel='linear', probability = True), 
                        "SVM", filename, number_classes)
+
+"""
+    Pre:x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion, el mismo caso para x_eval, y_eval y reduced_train, reduced_eval
+         autoencoder es el modelo Autoencoder creado. Filename es el nombrel del fichero utilizado
+         number_classes debe ser equivalente al numero de clases distintas del conjunto y
+         model es el modelo a comparar y model_name es su nombre
+    Post: Realiza la comparacion de métricas del modelo Autoencoder con un Shallow Model especificado en model
+"""
+def compare_model_bar_graph(x_train, reduced_train, y_train, 
+                         x_eval, reduced_eval, y_eval, 
+                         autoencoder, model, model_name, filename):
+    
+    model_baseline_metrics = get_metrics_model(clone(model),
+                                 x_train, y_train, 
+                                 x_eval, y_eval, model_name)
+    
+    model_reduce_metrics = get_metrics_model(clone(model),
+                                 reduced_train, y_train, 
+                                 reduced_eval, y_eval, model_name + " Reduced")
+    
+    autoencoder_metrics = get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval)
+
+    # Dividimos las metricas para cada uno
+    accuracy = [model_baseline_metrics[0], autoencoder_metrics[0], model_reduce_metrics[0]]
+    precision = [model_baseline_metrics[1], autoencoder_metrics[1], model_reduce_metrics[1]]
+    recall = [model_baseline_metrics[2], autoencoder_metrics[2], model_reduce_metrics[2]]
+    f1_score = [model_baseline_metrics[3], autoencoder_metrics[3], model_reduce_metrics[3]]
+    x_ticks = [model_name,'Autoencoder', model_name + ' + DL']
+    plot.plot_bar_graph(3, 4, [accuracy, precision, recall, f1_score ], ['r', 'g', 'b', 'y'],
+                 ["Accuracy", "Precision", "Recall", "F1Score"], x_ticks, filename, "compare" + model_name)
+
+"""
+    Pre:x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion, el mismo caso para x_eval, y_eval y reduced_train, reduced_eval
+         autoencoder es el modelo Autoencoder creado. Filename es el nombrel del fichero utilizado
+         number_classes debe ser equivalente al numero de clases distintas del conjunto y
+         model es el modelo a comparar y model_name es su nombre
+    Post: Realiza la comparacion de Curvas ROC del modelo Autoencoder con un Shallow Model especificado en model
+"""
+def compare_model_roc_curve(x_train, reduced_train, y_train, 
+                            x_eval, reduced_eval, y_eval, 
+                            autoencoder, model, 
+                            model_name, filename, number_classes):
+
+    bsln_fpr, bsln_tpr, bsln_roc_auc = got_roc_values_multiclass(number_classes, y_eval, get_prob(clone(model),x_train, y_train, x_eval))
+
+    red_fpr, red_tpr, red_roc_auc = got_roc_values_multiclass(number_classes, y_eval, get_prob(clone(model),reduced_train, y_train, reduced_eval))
+
+    ae_fpr, ae_tpr, ae_roc_auc = got_roc_values_multiclass(number_classes, y_eval, autoencoder.predict_proba(x_eval,0))
+    
+    fpr_list = [bsln_fpr, ae_fpr, red_fpr]
+    tpr_list = [bsln_tpr, ae_tpr, red_tpr]
+    roc_auc_ist = [bsln_roc_auc, ae_roc_auc, red_roc_auc]
+    model_list = ['Baseline ' + model_name + ' Mean (area = %0.3f)', 'Autoencoder (area = %0.3f)', model_name + ' + DL (area = %0.3f)']
+
+    plot.plot_roc_curves(3,fpr_list, tpr_list, roc_auc_ist, model_list,  "Macro Average", "compare" + model_name)
+
+"""
+    Pre: x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion, el mismo caso para x_eval, y_eval y reduced_train, reduced_eval
+         autoencoder es el modelo Autoencoder creado. Filename es el nombrel del fichero utilizado
+         number_classes debe ser equivalente al numero de clases distintas del conjunto y
+         model es el modelo a comparar y model_name es su nombre
+    Post: Realiza la comparacion MAUC del modelo Autoencoder con un Shallow Model especificado en model
+"""
+def compare_model_MAUC(x_train, reduced_train, y_train, 
+                     x_eval, reduced_eval, y_eval, 
+                     autoencoder, model, 
+                     model_name, filename, number_classes):
+
+    bsl_MAUC = MAUC(got_zip_class_prob(y_eval, get_prob(clone(model),x_train, y_train, x_eval)) , number_classes)
+
+    red_MAUC = MAUC(got_zip_class_prob(y_eval, get_prob(clone(model),reduced_train, y_train, reduced_eval)) , number_classes)
+
+    ae_MAUC = MAUC(got_zip_class_prob(y_eval, autoencoder.predict_proba(x_eval,0)), number_classes)
+
+    MAUC_list = [bsl_MAUC, ae_MAUC, red_MAUC]
+    x_ticks = [model_name,'Autoencoder', model_name + ' + DL']
+
+    plot.plot_bar_graph(3, 2, [[], MAUC_list] , ['w', 'b'], ["", 'MAUC'], x_ticks, filename, "compareMAUC" + model_name)
+
+# ------------------------------------------------------------------- #
+#                   FUNCIONES PARA MOSTRAR RESULTADOS                 #
+# ------------------------------------------------------------------- #
     
 def plot_matrix(x_train, y_train, x_test, y_test, filename, using_DL, number_classes):
     labels = ["CN","MCI","AD"]
@@ -400,17 +617,7 @@ def plot_matrix(x_train, y_train, x_test, y_test, filename, using_DL, number_cla
     plot.plot_confusion_matrix(y_test, predict_values(GradientBoostingClassifier(n_estimators = 20, learning_rate = 0.3), 
                                             x_train, y_train, x_test, "GB" + using_DL), "GB" + using_DL, labels)
     plot.plot_confusion_matrix(y_test, predict_values(svm.SVC(kernel='linear'), x_train, y_train, x_test, "SVM" + using_DL), "SVM" + using_DL, labels)
-
-
-
-def show_result(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes):
-
-    plot_matrix(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes)
     
-    show_result_bar_graph(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes)
-             
-    show_result_roc_curves(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes)
-
 def show_result_bar_graph(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes):
     # Obtenemos las metricas, los valores predecidos y el modelo ya entrenado
     knn_metrics = get_metrics_model(KNeighborsClassifier(n_neighbors = number_classes),
@@ -445,65 +652,7 @@ def show_result_bar_graph(x_train, y_train, x_eval, y_eval, filename, using_DL, 
     # Ploteamos el grafico de barras
     plot.plot_bar_graph(5, 4, [accuracy, precision, recall, f1_score], ['r', 'g', 'b', 'y'],
                  ["Accuracy", "Precision", "Recall", "F1Score"], x_ticks, filename, using_DL)
-
-def compare_model_bar_graph(x_train, reduced_train, y_train, 
-                         x_eval, reduced_eval, y_eval, 
-                         autoencoder, model, model_name, filename):
     
-    model_baseline_metrics = get_metrics_model(clone(model),
-                                 x_train, y_train, 
-                                 x_eval, y_eval, model_name)
-    
-    model_reduce_metrics = get_metrics_model(clone(model),
-                                 reduced_train, y_train, 
-                                 reduced_eval, y_eval, model_name + " Reduced")
-    
-    autoencoder_metrics = get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval)
-
-    # Dividimos las metricas para cada uno
-    accuracy = [model_baseline_metrics[0], autoencoder_metrics[0], model_reduce_metrics[0]]
-    precision = [model_baseline_metrics[1], autoencoder_metrics[1], model_reduce_metrics[1]]
-    recall = [model_baseline_metrics[2], autoencoder_metrics[2], model_reduce_metrics[2]]
-    f1_score = [model_baseline_metrics[3], autoencoder_metrics[3], model_reduce_metrics[3]]
-    x_ticks = [model_name,'Autoencoder', model_name + ' + DL']
-    plot.plot_bar_graph(3, 4, [accuracy, precision, recall, f1_score ], ['r', 'g', 'b', 'y'],
-                 ["Accuracy", "Precision", "Recall", "F1Score"], x_ticks, filename, "compare" + model_name)
-
-def compare_model_roc_curve(x_train, reduced_train, y_train, 
-                            x_eval, reduced_eval, y_eval, 
-                            autoencoder, model, 
-                            model_name, filename, number_classes):
-
-    bsln_fpr, bsln_tpr, bsln_roc_auc = got_roc_values_multiclass(number_classes, y_eval, get_prob(clone(model),x_train, y_train, x_eval), list(range(0,number_classes)))
-
-    red_fpr, red_tpr, red_roc_auc = got_roc_values_multiclass(number_classes, y_eval, get_prob(clone(model),reduced_train, y_train, reduced_eval), list(range(0,number_classes)))
-
-    ae_fpr, ae_tpr, ae_roc_auc = got_roc_values_multiclass(number_classes, y_eval, autoencoder.predict_proba(x_eval,0), list(range(0,number_classes)))
-    
-    fpr_list = [bsln_fpr, ae_fpr, red_fpr]
-    tpr_list = [bsln_tpr, ae_tpr, red_tpr]
-    roc_auc_ist = [bsln_roc_auc, ae_roc_auc, red_roc_auc]
-    model_list = ['Baseline ' + model_name + ' Mean (area = %0.3f)', 'Autoencoder (area = %0.3f)', model_name + ' + DL (area = %0.3f)']
-
-    plot.plot_roc_curves(3,fpr_list, tpr_list, roc_auc_ist, model_list,  "Macro Average", "compare" + model_name)
-
-def compare_model_MAUC(x_train, reduced_train, y_train, 
-                     x_eval, reduced_eval, y_eval, 
-                     autoencoder, model, 
-                     model_name, filename, number_classes):
-
-    bsl_MAUC = MAUC(got_zip_class_prob(y_eval, get_prob(clone(model),x_train, y_train, x_eval)) , number_classes)
-
-    red_MAUC = MAUC(got_zip_class_prob(y_eval, get_prob(clone(model),reduced_train, y_train, reduced_eval)) , number_classes)
-
-    ae_MAUC = MAUC(got_zip_class_prob(y_eval, autoencoder.predict_proba(x_eval,0)), number_classes)
-
-    MAUC_list = [bsl_MAUC, ae_MAUC, red_MAUC]
-    x_ticks = [model_name,'Autoencoder', model_name + ' + DL']
-
-    plot.plot_bar_graph(3, 2, [[], MAUC_list] , ['w', 'b'], ["", 'MAUC'], x_ticks, filename, "compareMAUC" + model_name)
-
-
 
 def show_result_roc_curves(x_train, y_train, x_eval, y_eval, 
                            filename, using_DL, number_classes):
@@ -543,34 +692,31 @@ def show_result_roc_curves(x_train, y_train, x_eval, y_eval,
     
     plot.plot_roc_curves(5,fpr_list, tpr_list, roc_auc_list, model_list, "Macro Average", using_DL)
 
+"""
+    Pre: using_DL es un valor que se encuentra entre 0 y 1, number_clases es el numero de clases distintas
+         que contiene el conjunto y.
+         x_train contiene las variables de cada observacion, y_train contiene la clase a la que
+         pertenece cada observacion, el mismo caso para x_eval, y_eval
+         filename es el nombre del fichero
+    Post: Muestra los resultados de métricas, Roc Curves y matriz de confusión del AU con los Shallow Model
+"""
+def show_result(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes):
 
-def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
-                             learning_rate, learning_rate_ft, 
-                             batch_size, epochs, dropout_value,
-                             size_layers_used, latent_space,
-                             encoder_func, decoder_func, verbose,
-                             text, number_classes):
+    plot_matrix(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes)
     
-    autoencoder = train_autoencoder(x_train, y_train, 
-                                   learning_rate, learning_rate_ft, 
-                                   batch_size, epochs, dropout_value, 
-                                   size_layers_used, latent_space, 
-                                   encoder_func, decoder_func, verbose, 1, number_classes, False)
+    show_result_bar_graph(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes)
+             
+    show_result_roc_curves(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes)
 
-    #MAUC values
-    # Devolvemos los datos reducidos mediante el autoencoder
-    reduced_train = autoencoder.return_reduce_attribute(x_train)
-    reduced_eval = autoencoder.return_reduce_attribute(x_eval)
 
-    compare_models_roc_curve(x_train, reduced_train, y_train, 
-                          x_eval, reduced_eval, y_eval, autoencoder, "TADPOLE D4", number_classes)
-    compare_models_bar_graph(x_train, reduced_train, y_train, 
-                          x_eval, reduced_eval, y_eval, autoencoder, "TADPOLE D4", number_classes)
-    compare_models_MAUC(x_train, reduced_train, y_train, x_eval, reduced_eval, y_eval, 
-                        autoencoder, "TADPOLE D4", number_classes)
-    show_result(x_train, y_train, x_eval, y_eval,  "TADPOLE D4", "", number_classes)
-    show_result(reduced_train, y_train, reduced_eval, y_eval, "TADPOLE D4", " + DL", number_classes)
+# ------------------------------------------------------------------- #
+#                   FUNCION MAIN Y USO DE COMMANDOS                   #
+# ------------------------------------------------------------------- #
 
+"""
+    Pre: ---
+    Post: Devuelve por pantalla el uso de los comandos
+"""
 def usageCommand():
     usage = "py main.py -GENERATE [-C] [-MRI] [-PET] [-DTI] [-BIO] [-sMCIpMCI] [-DELETE] [-useDX]]"
 
@@ -592,7 +738,6 @@ def main(argv):
         using_DX = 0
         clinicPaths= ["../Data/TADPOLE_D1_D2.csv", "../Data/TADPOLE_D3.csv", "../Data/TADPOLE_D4_corr.csv"]
         features =  read_file("../features/others")
-        feature_type_path = "../Feature_Type.csv"
         for i in range(1, len(argv)):
             if (argv[i] == "-C"):
                 features = features + read_file("../features/cognitive")
@@ -635,14 +780,12 @@ def main(argv):
                     os.remove(eval_data_Path)
 
         # Creamos el dataset de los datos médicos y prepocesamos los datos
-        [trainData, evalData] = dataSet.loadTADPOLE(clinicPaths, features, feature_type_path, ad_or_mci, using_DX)
+        [trainData, evalData] = dataSet.loadTADPOLE(clinicPaths, features, ad_or_mci, using_DX)
     elif argv[0] == "-LOAD":
 
         trainData = pd.read_csv(argv[1], sep = ";")
         evalData = pd.read_csv(argv[2], sep = ";")
 
-        print(trainData.shape)
-        exit()
         [xTrain, yTrain] = dataSet.divideData(trainData)
         [xEval, yEval] = dataSet.divideData(evalData)
         
@@ -663,7 +806,7 @@ def main(argv):
                 ejecution_mode = 2
         
         if ejecution_mode == 1:
-            hyperParametersAE(xTrain, yTrain, sizeLayersUsed, latent_space, "relu", "relu")
+            hyper_parameters_autoencoder(xTrain, yTrain, sizeLayersUsed, latent_space, "relu", "relu")
         elif ejecution_mode == 2:
             compare_autoencoders(xTrain, xEval, yTrain, yEval,
                            LEARNINGRATE, LEARNINGRATEFT,
