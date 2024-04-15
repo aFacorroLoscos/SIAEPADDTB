@@ -32,21 +32,18 @@ class Autoencoder:
     """
     def __init__(self,
                  input_shape,
-                 num_hidden_layers,
-                 size_layers,
+                 layer_sizes,
                  latent_space,
                  drop_out_value,
-                 encoder_activations_func,
-                 decoder_activations_func):
+                 activation_func):
         
         # Variables privadas
         self._input_shape = input_shape # Tamaño de entrada del modelo
-        self._num_layers = num_hidden_layers
-        self._dropout_value = drop_out_value
-        self._size_layers = size_layers
+        self._layer_sizes = layer_sizes
+        self._num_layers = len(layer_sizes)
         self._latent_space = latent_space
-        self._encoder_activations_func = encoder_activations_func
-        self._decoder_activations_func = decoder_activations_func
+        self._dropout_value = drop_out_value
+        self._activation_func = activation_func
 
         # Capas del encoder
         self._encoder = None
@@ -137,15 +134,22 @@ class Autoencoder:
         Post: Devolvemos la salida del Encoder
     """
     def _add_encoder_output(self,x):
+
+        x = BatchNormalization()(x)
+
         dense = Dense(self._latent_space,
-                      activation = self._encoder_activations_func, 
-                      input_shape = (self._size_layers[-1],),
+                      activation = self._activation_func, 
+                      input_shape = (self._layer_sizes[-1],),
                       kernel_initializer = initializers.he_normal,
                       kernel_regularizer = keras.regularizers.L2(0.01),
                       use_bias = True)
         
         self._dense_list.append(dense)
+
         x = dense(x)
+
+        x = Dropout(self._dropout_value)(x)
+
         return x
     
     """
@@ -153,6 +157,8 @@ class Autoencoder:
         Post: Devolvemos la salida del Decoder
     """
     def _add_decoder_output(self,x):
+        
+
         x = DenseTied(self._input_shape, 
                       activation = "linear",
                       use_bias = True,
@@ -172,15 +178,14 @@ class Autoencoder:
             if layer_index == 0:
                 input_dim = self._input_shape
             else:
-                input_dim = self._size_layers[layer_index - 1]
+                input_dim = self._layer_sizes[layer_index - 1]
+            x = BatchNormalization()(x)
 
-            x = self.__add_encoded_dense(self._size_layers[layer_index],
+            x = self.__add_encoded_dense(self._layer_sizes[layer_index],
                                          input_dim,
-                                         self._encoder_activations_func,
+                                         self._activation_func,
                                          x)
             
-            # Capa BatchNormalization y Dropout
-            x = BatchNormalization()(x)
             x = Dropout(self._dropout_value)(x)
 
         return x
@@ -192,15 +197,16 @@ class Autoencoder:
     def _add_layers_decoder(self, decoder_input):
         x = decoder_input
         for layer_index in reversed(range(1, len(self._dense_list))):
-            input_dim = self._size_layers[layer_index - 1]
+            input_dim = self._layer_sizes[layer_index - 1]
             dense_tied = self._dense_list[layer_index]
+            x = BatchNormalization()(x)
+
             x = self.__add_decoded__dense(input_dim,
                                           dense_tied,
-                                          self._decoder_activations_func,
+                                          self._activation_func,
                                           x)
             
             # Capa BatchNormalization y Dropout
-            x = BatchNormalization()(x)
             x = Dropout(self._dropout_value)(x)
 
         return x
@@ -233,7 +239,9 @@ class Autoencoder:
                       use_bias = True)(x)
         
         return x
-    
+
+    def get_autoencoder_model(self):
+        return self._model
 
     """
         Pre: numberOutputs es mayor que 0
@@ -386,11 +394,6 @@ class Autoencoder:
 
         return new_model.predict(x_Data)
     
-    """
-        Pre: ---
-        Post: Crea un archivo que contiene la grafica de la metrican segun metricUsed
-              Dependiendo del valor de numModel tendremos en cuenta el modelo baseline o fine tuned
-    """
     def obtain_history(self, numModel, metricUsed, nameFile):
         model_trained = self._autoencoder_train
         metric_name = self._model.metrics_names[metricUsed]
@@ -407,14 +410,35 @@ class Autoencoder:
         plt.title('Training and Validation ' + metric_name)
         plt.legend()
         plt.savefig(nameFile + '.png')
-
-# Clase DenseTied para enlazar matriz de pesos entre modelos encoder y decoder
-class DenseTied(Layer):
-
+     
+class DenseTranspose(keras.layers.Layer):
     """
         Pre: ---
-        Post: Inicializacion de la clase DenseTied
+        Post: Creamos la clase Dense Tranpose
     """
+    def __init__(self,
+                 dense,
+                 activation = None, **kwargs):
+        self.dense = dense
+        self.activation = keras.activations.get(activation)
+        self.kernel_regularizer = keras.regularizers.l2(0.001)
+        super().__init__(**kwargs)
+    
+    """
+        Pre: ---
+        Post: Definimos el valor de los bias.
+    """
+    def build(self, batch_input_shape):
+        self.biases = self.add_weight(name = "bias",
+                                      shape = [self.dense.input_shape[-1]],
+                                      initializer = "zeros")
+        super().build(batch_input_shape)
+    def call(self, inputs):
+        z = tf.matmul(inputs, self.dense.weights[0], transpose_b = True)
+        return self.activation(z + self.biases)
+
+
+class DenseTied(Layer):
     def __init__(self, units,
                  activation=None,
                  use_bias=True,
@@ -444,12 +468,6 @@ class DenseTied(Layer):
         self.input_spec = InputSpec(min_ndim=2)
         self.supports_masking = True
 
-    """
-        Pre: ---
-        Post: Funcion build donde se inicializa todos los valores
-              Aqui es donde unimos la matriz de valores weights a la clase
-              Tambien inicializamos los bias del modelo
-    """
     def build(self, input_shape):
         assert len(input_shape) >= 2
         input_dim = input_shape[-1]
@@ -474,10 +492,6 @@ class DenseTied(Layer):
 
         self.built = True
 
-    """
-        Pre: ---
-        Post: Devuelve una tupla con el tamaño NxM que debe tener la salida
-    """
     def compute_output_shape(self, input_shape):
         assert input_shape and len(input_shape) >= 2
         assert input_shape[-1] == self.units
@@ -485,11 +499,6 @@ class DenseTied(Layer):
         output_shape[-1] = self.units
         return tuple(output_shape)
 
-    """
-        Pre: ---
-        Post: Llamada de la funcion donde devuelve la salida del modelo
-              en base a los valores de weights, bias y entrada de datos
-    """
     def call(self, inputs):
         output = K.dot(inputs, self.kernel)
         if self.use_bias:
