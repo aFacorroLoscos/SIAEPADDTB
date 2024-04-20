@@ -1,5 +1,5 @@
 # Bibliotecas generales
-import keras
+import tensorflow.keras
 import math
 import numpy as np
 import tensorflow as tf
@@ -8,12 +8,12 @@ import tensorflow as tf
 from matplotlib import pyplot as plt
 
 # Utilizado en las capas de Autoencoder
-from keras import Model
+from tensorflow.keras import Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras import initializers
-from keras.layers import Layer, Input, InputSpec, BatchNormalization, Dropout, Dense
-from keras import regularizers, activations, initializers,constraints, Sequential
-from keras import backend as K
+from tensorflow.keras.layers import Layer, Input, InputSpec, BatchNormalization, Dropout, Dense
+from tensorflow.keras import regularizers, activations, initializers,constraints, Sequential
+from tensorflow.keras import backend as K
 
 # Metricas
 from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score
@@ -21,8 +21,6 @@ from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_sc
 # Utilizado en funcion de entrenamiento
 from sklearn.model_selection import train_test_split
 
-def rounded_accuracy(y_true, y_pred):
-    return keras.metrics.binary_accuracy(tf.round(y_true), tf.round(y_pred))
 
 class Autoencoder:
 
@@ -61,9 +59,6 @@ class Autoencoder:
         self._model_input = None
         self._encoder_output = None
 
-        # Lista de capas del encoder para aplicarlas al decoder
-        self._dense_list = []
-
         # Funcion build para crear el Autoencoder
         self._build()
 
@@ -75,6 +70,7 @@ class Autoencoder:
         self._build_encoder()
         self._build_decoder()
         self._build_autoencoder()
+
 
     """
         Pre: ---
@@ -114,7 +110,7 @@ class Autoencoder:
         Post: Devolemos la capa input del Encoder
     """
     def _add_encoder_input(self):
-        x =  keras.Input(shape = (self._input_shape,),
+        x =  Input(shape = (self._input_shape,),
                          dtype = tf.float32, 
                          name = "Encoder_Input")
         return x
@@ -124,7 +120,7 @@ class Autoencoder:
         Post: Devolvemos la capa input del Decoder
     """
     def _add_decoder_input(self):
-        x = keras.Input(shape=(self._latent_space,),
+        x = Input(shape=(self._latent_space,),
                         dtype = tf.float32, 
                         name = "Decoder_Input")
         return x
@@ -135,6 +131,7 @@ class Autoencoder:
     """
     def _add_encoder_output(self,x):
 
+<<<<<<< HEAD
         x = BatchNormalization()(x)
 
         dense = Dense(self._latent_space,
@@ -147,6 +144,16 @@ class Autoencoder:
         self._dense_list.append(dense)
 
         x = dense(x)
+=======
+        x = Dense(self._latent_space,
+                      activation = self._activation_func, 
+                      input_shape = (self._layer_sizes[-1],),
+                      kernel_initializer = initializers.he_normal,
+                      kernel_regularizer = tensorflow.keras.regularizers.L2(0.01),
+                      use_bias = True)(x)
+
+        x = BatchNormalization()(x)
+>>>>>>> e5b84a2 (Minor changes)
 
         x = Dropout(self._dropout_value)(x)
 
@@ -162,7 +169,7 @@ class Autoencoder:
         x = DenseTied(self._input_shape, 
                       activation = "linear",
                       use_bias = True,
-                      tied_to = self._dense_list[0])(x)
+                      tied_to = self._encoder.layers[1])(x)
 
         return x
 
@@ -179,6 +186,7 @@ class Autoencoder:
                 input_dim = self._input_shape
             else:
                 input_dim = self._layer_sizes[layer_index - 1]
+<<<<<<< HEAD
             x = BatchNormalization()(x)
 
             x = self.__add_encoded_dense(self._layer_sizes[layer_index],
@@ -186,6 +194,16 @@ class Autoencoder:
                                          self._activation_func,
                                          x)
             
+=======
+            
+            x = self.__add_encoded_dense(self._layer_sizes[layer_index],
+                                         input_dim,
+                                         self._activation_func,
+                                         x)
+
+            x = BatchNormalization()(x)
+
+>>>>>>> e5b84a2 (Minor changes)
             x = Dropout(self._dropout_value)(x)
 
         return x
@@ -196,6 +214,7 @@ class Autoencoder:
     """
     def _add_layers_decoder(self, decoder_input):
         x = decoder_input
+<<<<<<< HEAD
         for layer_index in reversed(range(1, len(self._dense_list))):
             input_dim = self._layer_sizes[layer_index - 1]
             dense_tied = self._dense_list[layer_index]
@@ -203,10 +222,21 @@ class Autoencoder:
 
             x = self.__add_decoded__dense(input_dim,
                                           dense_tied,
+=======
+        for layer_index in reversed(range(1, self._num_layers + 1)):
+            input_dim = self._layer_sizes[layer_index - 1]
+            x = self.__add_decoded__dense(input_dim,
+                                          self._encoder.layers[1 + layer_index * 3],
+>>>>>>> e5b84a2 (Minor changes)
                                           self._activation_func,
                                           x)
             
             # Capa BatchNormalization y Dropout
+<<<<<<< HEAD
+=======
+            x = BatchNormalization()(x)
+
+>>>>>>> e5b84a2 (Minor changes)
             x = Dropout(self._dropout_value)(x)
 
         return x
@@ -216,14 +246,12 @@ class Autoencoder:
         Post: Añadimos un dense al encoder
     """
     def __add_encoded_dense(self, node_size, input_dim, activation_func, x):
-        dense = Dense(node_size, 
+
+        x = Dense(node_size, 
                       activation = activation_func,
                       input_shape = (input_dim,),
                       kernel_initializer = initializers.he_normal,
-                      use_bias = True)
-
-        self._dense_list.append(dense)
-        x = dense(x)
+                      use_bias = True)(x)
 
         return x
 
@@ -232,12 +260,12 @@ class Autoencoder:
         Post: Añadimos dense al decoder
     """
     def __add_decoded__dense(self, input_dim, encoder_layer, activation_func, x):
-
+        
         x = DenseTied(input_dim, 
                       activation = activation_func,
                       tied_to = encoder_layer,
                       use_bias = True)(x)
-        
+                      
         return x
 
     def get_autoencoder_model(self):
@@ -250,7 +278,7 @@ class Autoencoder:
     def fine_tuning(self, numberOutputs):
 
         self._model_fine_tuning = Sequential()
-        self._model_fine_tuning.add(keras.Input(shape = (self._input_shape,),
+        self._model_fine_tuning.add(Input(shape = (self._input_shape,),
                                     dtype = tf.float32 ))
         
         for layer in self._encoder.layers:
@@ -288,9 +316,9 @@ class Autoencoder:
     """
     def compile(self, learning_rate = 0.0001):
         optimizer = Adam(learning_rate = learning_rate)
-        loss = keras.losses.MeanAbsoluteError()
+        loss = tensorflow.keras.losses.MeanAbsoluteError()
         self._model.compile(optimizer = optimizer, loss = loss,
-                           metrics = [tf.keras.metrics.MeanAbsoluteError()])
+                           metrics = [tensorflow.keras.metrics.MeanAbsoluteError()])
 
     """
         Pre: learning_rate es mayor que 0
@@ -298,9 +326,9 @@ class Autoencoder:
     """
     def compile_fine_tuning(self, learning_rate = 0.0001):
         optimizer = Adam(learning_rate = learning_rate)
-        loss = tf.keras.losses.CategoricalCrossentropy(reduction = "sum")
-        self._model_fine_tuning.compile(optimizer = optimizer, loss = "sparse_categorical_crossentropy",
-                             metrics=['sparse_categorical_accuracy'])
+        loss = tensorflow.keras.losses.SparseCategoricalCrossentropy(reduction = "sum")
+        self._model_fine_tuning.compile(optimizer = optimizer, loss = loss,
+                             metrics=[tensorflow.keras.metrics.SparseCategoricalAccuracy()])
 
     """
         Pre: x_train es un conjunto de datos,
@@ -314,12 +342,17 @@ class Autoencoder:
                                                                         shuffle = True, 
                                                                         random_state = 42)
 
+        callback =  tensorflow.keras.callbacks.EarlyStopping(monitor = "val_loss", mode = "min", verbose = 1, patience = 10, min_delta = 0.001)
+
+        
+        
         self._autoencoder_train = self._model.fit(train_X,
                        train_ground,
                        batch_size = batch_size,
                        epochs = num_epochs,
                        verbose = verbose_mode,
                        shuffle = True,
+                       callbacks = [callback],
                        validation_data = (valid_X, valid_ground))
 
         
@@ -336,12 +369,15 @@ class Autoencoder:
                                                                       shuffle = True, 
                                                                       random_state = 42,
                                                                       stratify=y_train)
+
+        callback =  tensorflow.keras.callbacks.EarlyStopping(monitor = "val_loss", mode = "min", verbose = 1, patience = 10)
         
         self._autoencoder_fine_tuned_train = self._model_fine_tuning.fit(train_X, train_label,
                        batch_size = batch_size,
                        epochs = num_epochs,
                        verbose = verbose_mode,
                        shuffle = True,
+                       callbacks = [callback],
                        validation_data = (valid_X, valid_label))
 
     """
@@ -390,64 +426,34 @@ class Autoencoder:
 
         layers = self._model_fine_tuning.layers
 
-        new_model = tf.keras.models.Sequential(layers[:-1])
+        new_model = tensorflow.keras.models.Sequential(layers[:-1])
 
         return new_model.predict(x_Data)
     
-    def obtain_history(self, numModel, metricUsed, nameFile):
+    def obtain_history(self, autoencoder_type):
         model_trained = self._autoencoder_train
-        metric_name = self._model.metrics_names[metricUsed]
-        if(numModel == 1):
+        metrics_name = self._model.metrics_names
+
+        if(autoencoder_type == "fine_tuning"):
             model_trained = self._autoencoder_fine_tuned_train
-            metric_name = self._model_fine_tuning.metrics_names[metricUsed]
+            metrics_name = self._model_fine_tuning.metrics_names
 
-        loss = model_trained.history[metric_name]
-        val_loss = model_trained.history["val_" + metric_name]
-        epochs = range(len(val_loss))
-        plt.figure()
-        plt.plot(epochs, loss, 'r', label='Training ' + metric_name)
-        plt.plot(epochs, val_loss, 'b', label='Validation ' + metric_name)
-        plt.title('Training and Validation ' + metric_name)
-        plt.legend()
-        plt.savefig(nameFile + '.png')
+        for metric_name in metrics_name:
+            loss = model_trained.history[metric_name]
+            val_loss = model_trained.history["val_" + metric_name]
+            epochs = range(len(val_loss))
+            plt.figure()
+            plt.plot(epochs, loss, 'r', label='Training ' + metric_name)
+            plt.plot(epochs, val_loss, 'b', label='Validation ' + metric_name)
+            plt.legend()
+            plt.savefig("../results/train_metrics/" + metric_name + "_" + autoencoder_type + '.png')
      
-class DenseTranspose(keras.layers.Layer):
-    """
-        Pre: ---
-        Post: Creamos la clase Dense Tranpose
-    """
-    def __init__(self,
-                 dense,
-                 activation = None, **kwargs):
-        self.dense = dense
-        self.activation = keras.activations.get(activation)
-        self.kernel_regularizer = keras.regularizers.l2(0.001)
-        super().__init__(**kwargs)
-    
-    """
-        Pre: ---
-        Post: Definimos el valor de los bias.
-    """
-    def build(self, batch_input_shape):
-        self.biases = self.add_weight(name = "bias",
-                                      shape = [self.dense.input_shape[-1]],
-                                      initializer = "zeros")
-        super().build(batch_input_shape)
-    def call(self, inputs):
-        z = tf.matmul(inputs, self.dense.weights[0], transpose_b = True)
-        return self.activation(z + self.biases)
-
-
 class DenseTied(Layer):
     def __init__(self, units,
                  activation=None,
                  use_bias=True,
-                 kernel_initializer='glorot_uniform',
                  bias_initializer='zeros',
-                 kernel_regularizer=None,
                  bias_regularizer=None,
-                 activity_regularizer=None,
-                 kernel_constraint=None,
                  bias_constraint=None,
                  tied_to=None,
                  **kwargs):
@@ -458,13 +464,11 @@ class DenseTied(Layer):
         self.units = units
         self.activation = activations.get(activation)
         self.use_bias = use_bias
-        self.kernel_initializer = initializers.get(kernel_initializer)
+
         self.bias_initializer = initializers.get(bias_initializer)
-        self.kernel_regularizer = regularizers.get(kernel_regularizer)
         self.bias_regularizer = regularizers.get(bias_regularizer)
-        self.activity_regularizer = regularizers.get(activity_regularizer)
-        self.kernel_constraint = constraints.get(kernel_constraint)
         self.bias_constraint = constraints.get(bias_constraint)
+
         self.input_spec = InputSpec(min_ndim=2)
         self.supports_masking = True
 
@@ -477,7 +481,7 @@ class DenseTied(Layer):
             self._non_trainable_weights.append(self.kernel)
         else:
             self.kernel = self.add_weight(shape=(input_dim, self.units),
-                                          initializer=self.kernel_initializer,
+
                                           name='kernel',
                                           regularizer=self.kernel_regularizer,
                                           constraint=self.kernel_constraint)
