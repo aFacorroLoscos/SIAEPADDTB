@@ -11,8 +11,7 @@ import pandas as pd
 import time
 
 # Biblioteca para Kfold, split de datos y labelice de las clases
-from sklearn.model_selection import StratifiedKFold
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold, StratifiedKFold
 from sklearn.preprocessing import label_binarize
 
 # Clases propias
@@ -24,24 +23,26 @@ import plot
 # Shallow models
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn import svm
 from sklearn.base import clone
 
 # Metrics
-from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score, roc_curve, auc
+from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score, roc_curve, auc, mean_squared_error
 
-# Graph plotting
-import matplotlib.pyplot as plt
+# Hyper parameters optimization
+from skopt import BayesSearchCV 
+from scikeras.wrappers import KerasRegressor
+from skopt.space import Real, Integer
 
+from scipy import stats
+import numpy as np
 
 # Variables GLOBALES PARA ENTRENAR EL AUTOENCODER
-LEARNINGRATE = 0.0004
-LEARNINGRATEFT = 0.00004
+LEARNINGRATE = 0.003
 BATCHSIZE = 32
-EPOCHS = 25
-DROPOUTVALUE = 0.1
+DROPOUTVALUE = 0.2
+EPOCHS = 50
 
 # Layers que se utilizan para cbig_cross_sectional_features
 
@@ -63,38 +64,37 @@ def one_hot(array, num_classes):
 """
     Pre: x_train contiene las variables de cada observacion, y_train contiene la clase a la que
          pertenece cada observacion.
-         learning_rate, learning_rate_ft, batch_size, epochs y num_out_puts  debe ser 
+         learning_rate, batch_size, epochs y num_out_puts  debe ser 
          estrictamente mayor que 0. El tamaño de endcoder_func, decoder_func y 
          size_layers_used debe ser el mismo.  
     Post: Devuelve un autoencoder entrenado mediante fine tuning
 """
 def train_autoencoder(x_train, y_train, 
-                     learning_rate, learning_rate_ft, 
-                     batch_size, epochs, dropout,
+                     learning_rate, batch_size, 
+                     epochs, dropout,
                      size_layers_used, latent_space,
-                     encoder_func, decoder_func,
-                     verbose, verbose_mode, number_classes, neuronal_network):
+                     activation_func,
+                     verbose, verbose_mode, number_classes, autoencoder_model):
     # Creamos el autoencoder
     autoencoder = Autoencoder(
         input_shape = (np.shape(x_train)[1]),
-        num_hidden_layers = len(size_layers_used),
-        size_layers = size_layers_used,
+        layer_sizes = size_layers_used,
         latent_space = latent_space,
         drop_out_value = dropout,
-        encoder_activations_func = encoder_func,
-        decoder_activations_func = decoder_func,
+        activation_func = activation_func,
     )
     
     if verbose:
         autoencoder.summary()
 
-    if(not neuronal_network):
+    if(autoencoder_model):
         # Entrenamos el autoencoder
         autoencoder.compile(learning_rate)
         autoencoder.train(x_train, batch_size, epochs, verbose_mode)
 
         if verbose:
-            autoencoder.obtain_history(0, 0, "lossHistory")
+            autoencoder.obtain_history("normal")
+
     # Entrenamos el autoencoder para que pueda
     # clasificar mediante fine tuning
     autoencoder.fine_tuning(number_classes)
@@ -102,37 +102,40 @@ def train_autoencoder(x_train, y_train,
     if verbose:
         autoencoder.summary_fine_tuning()
 
-    autoencoder.compile_fine_tuning(learning_rate_ft)
+    autoencoder.compile_fine_tuning(learning_rate/10)
     autoencoder.set_trainable(True)
     autoencoder.train_fine_tuning(x_train, y_train, batch_size, epochs, verbose_mode)
 
     if verbose:
-        autoencoder.obtain_history(1, 0, "lossHistoryFT")
-        autoencoder.obtain_history(1, 1, "lossAccuracyFT")
+        autoencoder.obtain_history("fine_tuning")
 
     return autoencoder
 
 def compare_autoencoders(x_train, x_eval, y_train, y_eval,
-                             learning_rate, learning_rate_ft, 
-                             batch_size, epochs, dropout_value,
+                             learning_rate, batch_size, 
+                             epochs, dropout_value,
                              size_layers_used, latent_space,
-                             encoder_func, decoder_func, 
-                             verbose,number_classes):   
-    autoencoder_entire = train_autoencoder(x_train, y_train, 
-                                   learning_rate, learning_rate_ft, 
-                                   batch_size, epochs, dropout_value, 
-                                   size_layers_used, latent_space, 
-                                   encoder_func, decoder_func, verbose, 1, number_classes, False)
+                             activation_func, 
+                             verbose,number_classes):
+    ae_metrics = [0,0,0,0]
+    nn_metrics = [0,0,0,0]
+    while np.mean(ae_metrics) < 0.75 or np.mean(nn_metrics) < 0.75:
+        autoencoder_entire = train_autoencoder(x_train, y_train, 
+                                    learning_rate, batch_size, 
+                                    epochs, dropout_value, 
+                                    size_layers_used, latent_space, 
+                                    activation_func, verbose, 0, number_classes, True)
+        
+        autoencoder_NN = train_autoencoder(x_train, y_train, 
+                                    learning_rate, batch_size, 
+                                    epochs, dropout_value, 
+                                    size_layers_used, latent_space, 
+                                    activation_func, verbose, 0, number_classes, False)
+        ae_metrics = get_metrics(autoencoder_entire.predict_fine_tuning(x_eval, 0), y_eval)
+        nn_metrics =  get_metrics(autoencoder_NN.predict_fine_tuning(x_eval, 0), y_eval)
+        print(ae_metrics)
+        print(nn_metrics)
     
-    autoencoder_NN = train_autoencoder(x_train, y_train, 
-                                   learning_rate, learning_rate_ft, 
-                                   batch_size, epochs, dropout_value, 
-                                   size_layers_used, latent_space, 
-                                   encoder_func, decoder_func, verbose, 1, number_classes, True)
-    
-    print(get_metrics(autoencoder_entire.predict_fine_tuning(x_eval, 0), y_eval))
-    print(get_metrics(autoencoder_NN.predict_fine_tuning(x_eval, 0), y_eval))
-
 
 
 
@@ -142,7 +145,7 @@ def compare_autoencoders(x_train, x_eval, y_train, y_eval,
     Post: Muestra por pantala la distribucion de valores de train y test y la exactitud
           de cada uno de los folds y la exactitud del algoritmo Cross Validation
 """
-def kFold_cross_validation_autoencoder(x_train, y_train, lr, lr_fine_tuning, 
+def kFold_cross_validation_autoencoder(x_train, y_train, lr, 
                                     batch_size, epochs, dropout_value,
                                     size_layers_used, latent_space,
                                     encoder_func, decoder_func):
@@ -150,7 +153,7 @@ def kFold_cross_validation_autoencoder(x_train, y_train, lr, lr_fine_tuning,
     kfold = strtfdKFold.split(x_train, y_train)
     scores = [] 
     for k, (train, test) in enumerate(kfold):
-        autoencoder = train_autoencoder(x_train[train], y_train[train], lr, lr_fine_tuning, 
+        autoencoder = train_autoencoder(x_train[train], y_train[train], lr, 
                                        batch_size, epochs, dropout_value, 
                                        size_layers_used, latent_space,
                                        encoder_func, decoder_func, False, 0, False)
@@ -235,6 +238,52 @@ def hyper_parameters_autoencoder(x_train, y_train, size_layers, latent_space, en
     print("Batch Size: " + str(best_hyper_parameters[2]))
     print("Dropout: " + str(best_hyper_parameters[3]))
     print("Epochs: " + str(best_hyper_parameters[4]))
+
+def create_autoencoder_hyper_par(dropout_value):
+    autoencoder = Autoencoder(
+        input_shape = 751,
+        layer_sizes = [500,250,125,75],
+        latent_space = 50,
+        drop_out_value = dropout_value,
+        activation_func = "relu",
+    )
+
+    autoencoder_model = autoencoder.get_autoencoder_model()
+
+
+
+    return autoencoder_model
+
+
+
+
+def hyper_parameters_optimization(x_train):
+
+    callback =  keras.callbacks.EarlyStopping(monitor = "loss", mode = "min", verbose = 1, patience = 10, min_delta = 0.01)
+    kfold = KFold(n_splits = 10, random_state = 42, shuffle = True)
+
+    search_spaces = {
+        "optimizer__learning_rate" : (1e-3, 0.1, "log-uniform") ,
+        "batch_size" : [16,32,64],
+        "model__dropout_value" : [0.2,0.3,0.4]
+    }
+
+    autoencoder_model = KerasRegressor(create_autoencoder_hyper_par, loss = "mean_absolute_error", optimizer = "adam", epochs = 50, callbacks = [callback], verbose = 0, random_state = 42)
+    
+    opt = BayesSearchCV(
+        estimator = autoencoder_model,
+        search_spaces = search_spaces,
+        n_jobs = -1,
+        cv = kfold,
+        verbose = 0
+    )
+
+    opt.fit(x_train, x_train)
+
+    print("Best val. score: %s" % opt.best_score_)
+    #print("Test score: %s" % opt.score(x_test, y_test))
+    print("Best params obtained: %s" % str(opt.best_params_))
+
 
 
 """
@@ -545,17 +594,16 @@ def show_result_roc_curves(x_train, y_train, x_eval, y_eval,
 
 
 def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
-                             learning_rate, learning_rate_ft, 
-                             batch_size, epochs, dropout_value,
+                             learning_rate, batch_size, 
+                             epochs, dropout_value,
                              size_layers_used, latent_space,
-                             encoder_func, decoder_func, verbose,
-                             text, number_classes):
+                             activation_func, verbose, number_classes):
     
     autoencoder = train_autoencoder(x_train, y_train, 
-                                   learning_rate, learning_rate_ft, 
-                                   batch_size, epochs, dropout_value, 
+                                   learning_rate, batch_size, 
+                                   epochs, dropout_value, 
                                    size_layers_used, latent_space, 
-                                   encoder_func, decoder_func, verbose, 1, number_classes, False)
+                                   activation_func, verbose, 2, number_classes, True)
 
     #MAUC values
     # Devolvemos los datos reducidos mediante el autoencoder
@@ -640,44 +688,43 @@ def main(argv):
 
         trainData = pd.read_csv(argv[1], sep = ";")
         evalData = pd.read_csv(argv[2], sep = ";")
-
-        print(trainData.shape)
-        exit()
+        
         [xTrain, yTrain] = dataSet.divideData(trainData)
         [xEval, yEval] = dataSet.divideData(evalData)
-        
-        sizeLayersUsed = [500,300]
-        latent_space = 150
-        
-        text = "CN/MCI/AD problem"
+
+        sizeLayersUsed = [500,250,125,75]
+        latent_space = 50
+
         number_classes = 3
-        ejecution_mode = 0
+        execution_mode = 0
 
         for i in range(1, len(argv)):
             if (argv[i] == "-sMCIpMCI"):
                 number_classes = 2
                 text = "sMCI/pMCI problem"
             elif (argv[i] == "-KFDOL"):
-                ejecution_mode = 1
+                execution_mode = 1
             elif (argv[i] == "-COMPARE"):
-                ejecution_mode = 2
+                execution_mode = 2
+            elif (argv[i] == "-PAROPTI"):
+                execution_mode = 3
         
-        if ejecution_mode == 1:
-            hyperParametersAE(xTrain, yTrain, sizeLayersUsed, latent_space, "relu", "relu")
-        elif ejecution_mode == 2:
+        if execution_mode == 1:
+            hyper_parameters_autoencoder(xTrain, yTrain, sizeLayersUsed, latent_space, "relu", "relu")
+        elif execution_mode == 2:
             compare_autoencoders(xTrain, xEval, yTrain, yEval,
-                           LEARNINGRATE, LEARNINGRATEFT,
-                           BATCHSIZE, EPOCHS, DROPOUTVALUE,
+                           LEARNINGRATE, BATCHSIZE, 
+                           EPOCHS, DROPOUTVALUE,
                            sizeLayersUsed,  latent_space, 
-                           "relu", "relu", False, number_classes)
+                           "relu", 0, number_classes)
+        elif execution_mode == 3:
+            hyper_parameters_optimization(xTrain)
         else:
-            sizeLayersUsed = [500,300]
-            latent_space = 150
             evaluate_AE_with_shallow(xTrain, xEval, yTrain, yEval,
-                           LEARNINGRATE, LEARNINGRATEFT,
-                           BATCHSIZE, EPOCHS, DROPOUTVALUE,
+                           LEARNINGRATE, BATCHSIZE, 
+                           EPOCHS, DROPOUTVALUE,
                            sizeLayersUsed,  latent_space, 
-                           "relu", "relu", False, text, number_classes)
+                           "relu", 1, number_classes)
 
     else:
         usageCommand()

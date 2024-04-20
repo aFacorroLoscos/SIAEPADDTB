@@ -158,3 +158,11 @@ Cross-Validation meanF1: 0.924 +/- 0.022
 [0.8558106169296987, 0.8393885235766874, 0.829547369335331, 0.8325536299798039]
 
 
+Best val. score: -	9557323029904
+Best params obtained: OrderedDict([('batch_size', 16), ('model__dropout_value', 0.2), ('optimizer__learning_rate', 0.001)])
+
+Best val. score: 0.05209185185466465
+Best params obtained: OrderedDict([('batch_size', 32), ('model__dropout_value', 0.2), ('optimizer__learning_rate', 0.0030850495641087296)])
+
+NN - [0.8385939741750359, 0.7819931059030706, 0.8504085492361583, 0.8084805960964777]
+AUTOENCODER - [0.8558106169296987, 0.7422804848348602, 0.8884770784759689, 0.7879090152590483]
