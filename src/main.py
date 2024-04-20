@@ -30,11 +30,15 @@ from sklearn.base import clone
 # Metrics
 from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score, roc_curve, auc, mean_squared_error
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> e5b84a2a95380701ffabcb69da7a380f2072f7a6
 
 # Hyper parameters optimization
 from skopt import BayesSearchCV 
 from scikeras.wrappers import KerasRegressor
 from skopt.space import Real, Integer
+<<<<<<< HEAD
 =======
 
 # Hyper parameters optimization
@@ -45,6 +49,11 @@ from skopt.space import Real, Integer
 from scipy import stats
 import numpy as np
 >>>>>>> e5b84a2 (Minor changes)
+=======
+
+from scipy import stats
+import numpy as np
+>>>>>>> e5b84a2a95380701ffabcb69da7a380f2072f7a6
 
 # Variables GLOBALES PARA ENTRENAR EL AUTOENCODER
 LEARNINGRATE = 0.003
@@ -268,10 +277,14 @@ def create_autoencoder_hyper_par(dropout_value):
 def hyper_parameters_optimization(x_train):
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     callback =  keras.callbacks.EarlyStopping(monitor = "loss", mode = "min", verbose = 1, patience = 5, min_delta = 0.001)
 =======
     callback =  keras.callbacks.EarlyStopping(monitor = "loss", mode = "min", verbose = 1, patience = 10, min_delta = 0.01)
 >>>>>>> e5b84a2 (Minor changes)
+=======
+    callback =  keras.callbacks.EarlyStopping(monitor = "loss", mode = "min", verbose = 1, patience = 10, min_delta = 0.01)
+>>>>>>> e5b84a2a95380701ffabcb69da7a380f2072f7a6
     kfold = KFold(n_splits = 10, random_state = 42, shuffle = True)
 
     search_spaces = {
@@ -281,10 +294,14 @@ def hyper_parameters_optimization(x_train):
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     autoencoder_model = KerasRegressor(create_autoencoder_hyper_par, loss = "mean_squared_error", optimizer = "adam", epochs = 50, callbacks = [callback], verbose = 0, random_state = 42)
 =======
     autoencoder_model = KerasRegressor(create_autoencoder_hyper_par, loss = "mean_absolute_error", optimizer = "adam", epochs = 50, callbacks = [callback], verbose = 0, random_state = 42)
 >>>>>>> e5b84a2 (Minor changes)
+=======
+    autoencoder_model = KerasRegressor(create_autoencoder_hyper_par, loss = "mean_absolute_error", optimizer = "adam", epochs = 50, callbacks = [callback], verbose = 0, random_state = 42)
+>>>>>>> e5b84a2a95380701ffabcb69da7a380f2072f7a6
     
     opt = BayesSearchCV(
         estimator = autoencoder_model,
@@ -709,6 +726,7 @@ def main(argv):
         [xEval, yEval] = dataSet.divideData(evalData)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         sizeLayersUsed = [500,300]
         latent_space = 150
         
@@ -718,6 +736,11 @@ def main(argv):
         latent_space = 50
 
 >>>>>>> e5b84a2 (Minor changes)
+=======
+        sizeLayersUsed = [500,250,125,75]
+        latent_space = 50
+
+>>>>>>> e5b84a2a95380701ffabcb69da7a380f2072f7a6
         number_classes = 3
         execution_mode = 0
 
@@ -740,10 +763,14 @@ def main(argv):
                            EPOCHS, DROPOUTVALUE,
                            sizeLayersUsed,  latent_space, 
 <<<<<<< HEAD
+<<<<<<< HEAD
                            "relu", "relu", False, number_classes)
 =======
                            "relu", 0, number_classes)
 >>>>>>> e5b84a2 (Minor changes)
+=======
+                           "relu", 0, number_classes)
+>>>>>>> e5b84a2a95380701ffabcb69da7a380f2072f7a6
         elif execution_mode == 3:
             hyper_parameters_optimization(xTrain)
         else:

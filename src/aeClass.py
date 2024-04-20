@@ -132,6 +132,7 @@ class Autoencoder:
     def _add_encoder_output(self,x):
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         x = BatchNormalization()(x)
 
         dense = Dense(self._latent_space,
@@ -149,11 +150,20 @@ class Autoencoder:
                       activation = self._activation_func, 
                       input_shape = (self._layer_sizes[-1],),
                       kernel_initializer = initializers.he_normal,
+=======
+        x = Dense(self._latent_space,
+                      activation = self._activation_func, 
+                      input_shape = (self._layer_sizes[-1],),
+                      kernel_initializer = initializers.he_normal,
+>>>>>>> e5b84a2a95380701ffabcb69da7a380f2072f7a6
                       kernel_regularizer = tensorflow.keras.regularizers.L2(0.01),
                       use_bias = True)(x)
 
         x = BatchNormalization()(x)
+<<<<<<< HEAD
 >>>>>>> e5b84a2 (Minor changes)
+=======
+>>>>>>> e5b84a2a95380701ffabcb69da7a380f2072f7a6
 
         x = Dropout(self._dropout_value)(x)
 
@@ -187,6 +197,7 @@ class Autoencoder:
             else:
                 input_dim = self._layer_sizes[layer_index - 1]
 <<<<<<< HEAD
+<<<<<<< HEAD
             x = BatchNormalization()(x)
 
             x = self.__add_encoded_dense(self._layer_sizes[layer_index],
@@ -196,6 +207,9 @@ class Autoencoder:
             
 =======
             
+=======
+            
+>>>>>>> e5b84a2a95380701ffabcb69da7a380f2072f7a6
             x = self.__add_encoded_dense(self._layer_sizes[layer_index],
                                          input_dim,
                                          self._activation_func,
@@ -203,7 +217,10 @@ class Autoencoder:
 
             x = BatchNormalization()(x)
 
+<<<<<<< HEAD
 >>>>>>> e5b84a2 (Minor changes)
+=======
+>>>>>>> e5b84a2a95380701ffabcb69da7a380f2072f7a6
             x = Dropout(self._dropout_value)(x)
 
         return x
@@ -214,6 +231,7 @@ class Autoencoder:
     """
     def _add_layers_decoder(self, decoder_input):
         x = decoder_input
+<<<<<<< HEAD
 <<<<<<< HEAD
         for layer_index in reversed(range(1, len(self._dense_list))):
             input_dim = self._layer_sizes[layer_index - 1]
@@ -228,6 +246,12 @@ class Autoencoder:
             x = self.__add_decoded__dense(input_dim,
                                           self._encoder.layers[1 + layer_index * 3],
 >>>>>>> e5b84a2 (Minor changes)
+=======
+        for layer_index in reversed(range(1, self._num_layers + 1)):
+            input_dim = self._layer_sizes[layer_index - 1]
+            x = self.__add_decoded__dense(input_dim,
+                                          self._encoder.layers[1 + layer_index * 3],
+>>>>>>> e5b84a2a95380701ffabcb69da7a380f2072f7a6
                                           self._activation_func,
                                           x)
             
@@ -236,7 +260,10 @@ class Autoencoder:
 =======
             x = BatchNormalization()(x)
 
+<<<<<<< HEAD
 >>>>>>> e5b84a2 (Minor changes)
+=======
+>>>>>>> e5b84a2a95380701ffabcb69da7a380f2072f7a6
             x = Dropout(self._dropout_value)(x)
 
         return x
