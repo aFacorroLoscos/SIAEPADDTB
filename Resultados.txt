@@ -164,5 +164,28 @@ Best params obtained: OrderedDict([('batch_size', 16), ('model__dropout_value', 
 Best val. score: 0.05209185185466465
 Best params obtained: OrderedDict([('batch_size', 32), ('model__dropout_value', 0.2), ('optimizer__learning_rate', 0.0030850495641087296)])
 
+
+Best val. score: 0.01320249792664065
+Best params obtained: OrderedDict([('batch_size', 16), ('model__dropout_value', 0.2), ('optimizer__learning_rate', 0.003668676432034818)])
+
+CON ESTOS VALORES
+Best val. score: 0.07305417456194041
+Best params obtained: OrderedDict([('batch_size', 32), ('model__dropout_value', 0.2), ('optimizer__learning_rate', 0.0019215330921913028)])
+
+
 NN - [0.8385939741750359, 0.7819931059030706, 0.8504085492361583, 0.8084805960964777]
 AUTOENCODER - [0.8558106169296987, 0.7422804848348602, 0.8884770784759689, 0.7879090152590483]
+
+
+Result obtained using Autoencoder model:
+Cross-Validation accuracy: 0.718 +/- 0.115
+Cross-Validation precision: 0.726 +/- 0.113
+Cross-Validation recall: 0.788 +/- 0.091
+Cross-Validation meanF1: 0.690 +/- 0.142
+
+Result obtained using Neural Network model:
+Cross-Validation accuracy: 0.701 +/- 0.120
+Cross-Validation precision: 0.733 +/- 0.102
+Cross-Validation recall: 0.713 +/- 0.178
+Cross-Validation meanF1: 0.687 +/- 0.147
+

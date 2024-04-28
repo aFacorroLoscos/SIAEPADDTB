@@ -40,7 +40,7 @@ import numpy as np
 
 
 # Variables GLOBALES PARA ENTRENAR EL AUTOENCODER
-LEARNINGRATE = 0.003
+LEARNINGRATE = 0.0019
 BATCHSIZE = 32
 DROPOUTVALUE = 0.2
 EPOCHS = 50
@@ -70,11 +70,9 @@ def one_hot(array, num_classes):
          size_layers_used debe ser el mismo.  
     Post: Devuelve un autoencoder entrenado mediante fine tuning
 """
-def train_autoencoder(x_train, y_train, 
-                     learning_rate, batch_size, 
-                     epochs, dropout,
-                     size_layers_used, latent_space,
-                     activation_func,
+def train_autoencoder(x_train, y_train, learning_rate, 
+                      batch_size, epochs, dropout,
+                     size_layers_used, latent_space, activation_func,
                      verbose, verbose_mode, number_classes, autoencoder_model):
     # Creamos el autoencoder
     autoencoder = Autoencoder(
@@ -111,66 +109,46 @@ def train_autoencoder(x_train, y_train,
         autoencoder.obtain_history("fine_tuning")
 
     return autoencoder
-
-def compare_autoencoders(x_train, x_eval, y_train, y_eval,
-                             learning_rate, batch_size, 
-                             epochs, dropout_value,
-                             size_layers_used, latent_space,
-                             activation_func, 
-                             verbose,number_classes):
-    ae_metrics = [0,0,0,0]
-    nn_metrics = [0,0,0,0]
-    while np.mean(ae_metrics) < 0.75 or np.mean(nn_metrics) < 0.75:
-        autoencoder_entire = train_autoencoder(x_train, y_train, 
-                                    learning_rate, batch_size, 
-                                    epochs, dropout_value, 
-                                    size_layers_used, latent_space, 
-                                    activation_func, verbose, 0, number_classes, True)
-        
-        autoencoder_NN = train_autoencoder(x_train, y_train, 
-                                    learning_rate, batch_size, 
-                                    epochs, dropout_value, 
-                                    size_layers_used, latent_space, 
-                                    activation_func, verbose, 0, number_classes, False)
-        ae_metrics = get_metrics(autoencoder_entire.predict_fine_tuning(x_eval, 0), y_eval)
-        nn_metrics =  get_metrics(autoencoder_NN.predict_fine_tuning(x_eval, 0), y_eval)
-        print(ae_metrics)
-        print(nn_metrics)
     
-
-
-
 """
     Pre: x_train contiene las variables de cada observacion, y_train contiene la clase a la que
          pertenece cada observacion.
     Post: Muestra por pantala la distribucion de valores de train y test y la exactitud
           de cada uno de los folds y la exactitud del algoritmo Cross Validation
 """
-def kFold_cross_validation_autoencoder(x_train, y_train, lr, 
+def kFold_cross_validation_DLmodel(x_train, y_train, lr, 
                                     batch_size, epochs, dropout_value,
                                     size_layers_used, latent_space,
-                                    encoder_func, decoder_func):
+                                    activation_func, number_classes, autoencoder_model):
     strtfdKFold = StratifiedKFold(n_splits=10)
     kfold = strtfdKFold.split(x_train, y_train)
-    scores = [] 
+    accuracys = []
+    precisions = []
+    recalls = []
+    F1scores = []  
     for k, (train, test) in enumerate(kfold):
         autoencoder = train_autoencoder(x_train[train], y_train[train], lr, 
                                        batch_size, epochs, dropout_value, 
                                        size_layers_used, latent_space,
-                                       encoder_func, decoder_func, False, 0, False)
+                                       activation_func, False, 0, number_classes, autoencoder_model)
         
-        y_pred = autoencoder.predict_fine_tuning(x_train[test], 0)
+        metrics = get_metrics(autoencoder.predict_fine_tuning(x_train[test], 0), y_train[test])
 
-        score = f1_score(y_train[test], y_pred, average = "macro")
-        scores.append(score)
+        accuracys.append(metrics[0])
+        precisions.append(metrics[1])
+        recalls.append(metrics[2])
+        F1scores.append(metrics[3])
 
-        print('Fold: %2d, Training/Test Split Distribution: %s - %s, F1Score: %.3f' % (k+1, 
-                                                                                        np.shape(y_train[train])[0],
-                                                                                        np.shape(y_train[test])[0],
-                                                                                        score), flush=True)
-        
-    print('\n\nCross-Validation F1Score: %.3f +/- %.3f' %(np.mean(scores), np.std(scores)), flush=True)
-    return(np.mean(scores))
+        print('Fold: %2d, Training/Test Split Distribution: %s - %s, Accuracy: %.3f, Precision: %.3f, Recall: %.3f, F1Score: %.3f' % (k+1, 
+                                                                                        np.shape(y_train[train])[0], np.shape(y_train[test])[0],
+                                                                                        metrics[0], metrics[1], metrics[2], metrics[3]), flush=True)
+    model_name = "Autoencoder" if autoencoder_model else "Neural Network"
+
+    print("Result obtained using " + model_name + " model:")
+    print('Cross-Validation accuracy: %.3f +/- %.3f' %(np.mean(accuracys), np.std(accuracys)))
+    print('Cross-Validation precision: %.3f +/- %.3f' %(np.mean(precisions), np.std(precisions)))
+    print('Cross-Validation recall: %.3f +/- %.3f' %(np.mean(recalls), np.std(recalls)))
+    print('Cross-Validation meanF1: %.3f +/- %.3f\n ' %(np.mean(F1scores), np.std(F1scores)))
 
 
 def kFold_cross_validation_shallow(model, x_values, y_values, model_name):
@@ -223,7 +201,7 @@ def hyper_parameters_autoencoder(x_train, y_train, size_layers, latent_space, en
                                                                           learningrate[i], learningrate_fine_tuning[i], 
                                                                           batch_size[j], epochs[l], dropout_values[k],
                                                                           size_layers, latent_space,
-                                                                          encoder_act_func, decoder_act_func)
+                                                                          encoder_act_func, decoder_act_func, false)
                     if current_precision > best_precision:
                         best_hyper_parameters[0] = learningrate[i]
                         best_hyper_parameters[1] = learningrate_fine_tuning[i]
@@ -243,8 +221,8 @@ def hyper_parameters_autoencoder(x_train, y_train, size_layers, latent_space, en
 def create_autoencoder_hyper_par(dropout_value):
     autoencoder = Autoencoder(
         input_shape = 751,
-        layer_sizes = [500,250,125,75],
-        latent_space = 50,
+        layer_sizes = [600,300,200],
+        latent_space = 150,
         drop_out_value = dropout_value,
         activation_func = "relu",
     )
@@ -261,7 +239,7 @@ def create_autoencoder_hyper_par(dropout_value):
 def hyper_parameters_optimization(x_train):
 
 
-    callback =  keras.callbacks.EarlyStopping(monitor = "loss", mode = "min", verbose = 1, patience = 5, min_delta = 0.001)
+    callback =  keras.callbacks.EarlyStopping(monitor = "loss", mode = "min", verbose = 1, patience = 10, min_delta = 0.01)
 
     kfold = KFold(n_splits = 10, random_state = 42, shuffle = True)
 
@@ -272,7 +250,7 @@ def hyper_parameters_optimization(x_train):
     }
 
 
-    autoencoder_model = KerasRegressor(create_autoencoder_hyper_par, loss = "mean_squared_error", optimizer = "adam", epochs = 50, callbacks = [callback], verbose = 0, random_state = 42)
+    autoencoder_model = KerasRegressor(create_autoencoder_hyper_par, loss = "mean_absolute_error", optimizer = "adam", epochs = 50, callbacks = [callback], verbose = 0, random_state = 42)
     
     opt = BayesSearchCV(
         estimator = autoencoder_model,
@@ -302,10 +280,10 @@ def get_metrics(y_test, y_pred):
     return clasifier_metrics
 
 def show_metrics(metrics):
-    print("Accuracy: " + str(metrics[0]))
-    print("Precision: " + str(metrics[1]))
-    print("Recall: " + str(metrics[2]))
-    print("F1 Score: " + str(metrics[3]))
+    print("Accuracy: " + str(round(metrics[0],3)))
+    print("Precision: " + str(round(metrics[1],3)))
+    print("Recall: " + str(round(metrics[2],3)))
+    print("F1 Score: " + str(round(metrics[3],3)))
 """
     Pre: x_train e x_test contiene las variables de cada observacion, y_train e y_test contiene la clase a la que
          pertenece cada observacion.
@@ -601,14 +579,21 @@ def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
                              epochs, dropout_value,
                              size_layers_used, latent_space,
                              activation_func, verbose, number_classes):
-    
-    autoencoder = train_autoencoder(x_train, y_train, 
-                                   learning_rate, batch_size, 
-                                   epochs, dropout_value, 
-                                   size_layers_used, latent_space, 
-                                   activation_func, verbose, 2, number_classes, True)
+    f1_score = 0
+    while f1_score < 0.8:
 
-    #MAUC values
+        autoencoder = train_autoencoder(x_train, y_train, 
+                                    learning_rate, batch_size, 
+                                    epochs, dropout_value, 
+                                    size_layers_used, latent_space, 
+                                    activation_func, verbose, 0, number_classes, True)
+
+        print("AUTOENCODER MODEL METRICS ")
+        ae_metrics = get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval)
+        f1_score = ae_metrics[3]
+        show_metrics(ae_metrics)
+
+
     # Devolvemos los datos reducidos mediante el autoencoder
     reduced_train = autoencoder.return_reduce_attribute(x_train)
     reduced_eval = autoencoder.return_reduce_attribute(x_eval)
@@ -697,8 +682,8 @@ def main(argv):
         
         text = "CN/MCI/AD problem"
 
-        sizeLayersUsed = [500,250,125,75]
-        latent_space = 50
+        layer_sizes = [600,300,200]
+        latent_space = 150
 
         number_classes = 3
         execution_mode = 0
@@ -715,21 +700,27 @@ def main(argv):
                 execution_mode = 3
         
         if execution_mode == 1:
-            hyper_parameters_autoencoder(xTrain, yTrain, sizeLayersUsed, latent_space, "relu", "relu")
+            hyper_parameters_autoencoder(xTrain, yTrain, layer_sizes, latent_space, "relu", "relu")
         elif execution_mode == 2:
-            compare_autoencoders(xTrain, xEval, yTrain, yEval,
+            kFold_cross_validation_DLmodel(xTrain, yTrain,
                            LEARNINGRATE, BATCHSIZE, 
                            EPOCHS, DROPOUTVALUE,
-                           sizeLayersUsed,  latent_space, 
-                           "relu", False, number_classes)
+                           layer_sizes,  latent_space, 
+                           "relu", number_classes,  True)
+            
+            kFold_cross_validation_DLmodel(xTrain, yTrain,
+                           LEARNINGRATE, BATCHSIZE, 
+                           EPOCHS, DROPOUTVALUE,
+                           layer_sizes,  latent_space, 
+                           "relu", number_classes, False)
         elif execution_mode == 3:
             hyper_parameters_optimization(xTrain)
         else:
             evaluate_AE_with_shallow(xTrain, xEval, yTrain, yEval,
                            LEARNINGRATE, BATCHSIZE, 
                            EPOCHS, DROPOUTVALUE,
-                           sizeLayersUsed,  latent_space, 
-                           "relu", 1, number_classes)
+                           layer_sizes,  latent_space, 
+                           "relu", False, number_classes)
 
     else:
         usageCommand()

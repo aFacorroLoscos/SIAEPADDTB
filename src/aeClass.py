@@ -302,11 +302,11 @@ class Autoencoder:
     def train(self, x_train, batch_size, num_epochs, verbose_mode):
         
         train_X, valid_X, train_ground, valid_ground = train_test_split(x_train, x_train, 
-                                                                        test_size = 0.33,
+                                                                        test_size = 0.3,
                                                                         shuffle = True, 
                                                                         random_state = 42)
 
-        callback =  tensorflow.keras.callbacks.EarlyStopping(monitor = "val_loss", mode = "min", verbose = 1, patience = 10, min_delta = 0.001)
+        callback =  tensorflow.keras.callbacks.EarlyStopping(monitor = "val_loss", mode = "min", verbose = 1, patience = 10, min_delta = 0.01)
 
         
         
@@ -329,7 +329,7 @@ class Autoencoder:
     def train_fine_tuning(self, x_train, y_train, batch_size, num_epochs, verbose_mode):
 
         train_X, valid_X, train_label, valid_label = train_test_split(x_train, y_train, 
-                                                                      test_size = 0.33,
+                                                                      test_size = 0.3,
                                                                       shuffle = True, 
                                                                       random_state = 42,
                                                                       stratify=y_train)
