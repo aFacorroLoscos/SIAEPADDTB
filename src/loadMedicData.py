@@ -48,7 +48,7 @@ class Datasets:
     def normalizedValues(self, value, maxValue, minValue):
         result = np.nan
         if not pd.isna(value):
-            result = '{0:.3f}'.format(1 + ((value - minValue) / (maxValue - minValue)))
+            result = '{0:.3f}'.format((value - minValue) / (maxValue - minValue))
         return result
 
     """
@@ -137,8 +137,8 @@ class Datasets:
             D1D2Path = Path(medicalPaths[0])
             D1D2df = pd.read_csv(D1D2Path, sep = ",", decimal=".", float_precision='high')              # [12741 rows x 1907 columns]
 
-            D3Path = Path(medicalPaths[1])
-            D3df = pd.read_csv(D3Path, sep = ",", decimal=".", float_precision='high')
+            #D3Path = Path(medicalPaths[1])
+            #D3df = pd.read_csv(D3Path, sep = ",", decimal=".", float_precision='high')
                     
             D4Path = Path(medicalPaths[2])
             D4df = pd.read_csv(D4Path, sep = ",", decimal=".", float_precision='high')
@@ -150,7 +150,6 @@ class Datasets:
         
             # Fill DXCHANGE nans by older values
             D1D2df = self.fill_diagnans_by_older_values( D1D2df )
-            # D1D2df = self.fill_nans_by_older_values(D1D2df)
             # Borrando indices que el valor DXCHANGE es NAN  
             print( "Delete dataframe's index with DXCHANGE NaN...")
             idx = D1D2df[np.isnan(D1D2df.DXCHANGE)].index
@@ -308,9 +307,7 @@ class Datasets:
                         columnData = columnData.fillna(value='None')
                         # Realizamos el proceso de one hot encoding
                         oneHot = pd.get_dummies(columnData, columnName, drop_first=True, dtype=int)
-                        # Pasamos de binario a decimal entre 1 y 2
-                        oneHot = oneHot.replace(1,2)
-                        oneHot = oneHot.replace(0,1)
+
                         if(df[columnName].isnull().values.any()):
                             oneHot = oneHot.drop([columnName + "_None"], axis = 1)
 
@@ -345,7 +342,7 @@ class Datasets:
 
         imputer = KNNImputer(n_neighbors=10)
 
-        result = pd.concat([df[["Diagnosis"]].reset_index(), dfCat.reset_index(), dfQuant.reset_index()], axis=1).drop("index", axis=1) #tex
+        result = pd.concat([df[["Diagnosis"]].reset_index(), dfCat.reset_index(), dfQuant.reset_index()], axis=1).drop("index", axis=1)
 
         result = pd.DataFrame(imputer.fit_transform(result),columns = result.columns)
 

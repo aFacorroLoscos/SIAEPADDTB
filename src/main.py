@@ -45,7 +45,10 @@ BATCHSIZE = 32
 DROPOUTVALUE = 0.2
 EPOCHS = 50
 
-# Layers que se utilizan para cbig_cross_sectional_features
+# Diccionario de Shallow Model
+SHALLOWMODELDICT = {
+  "randomforest": RandomForestClassifier()
+}
 
 """
     Pre: fileNamePath es un path valido a un archivo de texto
@@ -109,7 +112,8 @@ def train_autoencoder(x_train, y_train, learning_rate,
         autoencoder.obtain_history("fine_tuning")
 
     return autoencoder
-    
+
+
 """
     Pre: x_train contiene las variables de cada observacion, y_train contiene la clase a la que
          pertenece cada observacion.
@@ -173,8 +177,8 @@ def kFold_cross_validation_shallow(model, x_values, y_values, model_name):
         meansF1.append(metrics[3])
         
         print('Fold: %2d, Training/Test Split Distribution: %s - %s, Accuracy: %.3f' % (k+1, 
-                                                                                         np.shape(yTrain[train])[0],
-                                                                                         np.shape(yTrain[test])[0],
+                                                                                         np.shape(y_values[train])[0],
+                                                                                         np.shape(y_values[test])[0],
                                                                                          metrics[0]))
     
     print("Result obtained using " + model_name + " model:")
@@ -579,19 +583,15 @@ def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
                              epochs, dropout_value,
                              size_layers_used, latent_space,
                              activation_func, verbose, number_classes):
-    f1_score = 0
-    while f1_score < 0.8:
 
-        autoencoder = train_autoencoder(x_train, y_train, 
-                                    learning_rate, batch_size, 
-                                    epochs, dropout_value, 
-                                    size_layers_used, latent_space, 
-                                    activation_func, verbose, 0, number_classes, True)
+    autoencoder = train_autoencoder(x_train, y_train, 
+                                learning_rate, batch_size, 
+                                epochs, dropout_value, 
+                                size_layers_used, latent_space, 
+                                activation_func, verbose, 0, number_classes, True)
 
-        print("AUTOENCODER MODEL METRICS ")
-        ae_metrics = get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval)
-        f1_score = ae_metrics[3]
-        show_metrics(ae_metrics)
+    print("AUTOENCODER MODEL METRICS ")
+    show_metrics(get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval))
 
 
     # Devolvemos los datos reducidos mediante el autoencoder
@@ -626,9 +626,11 @@ def main(argv):
     if argv[0] == "-GENERATE":
         ad_or_mci = 0
         using_DX = 0
+
         clinicPaths= ["../Data/TADPOLE_D1_D2.csv", "../Data/TADPOLE_D3.csv", "../Data/TADPOLE_D4_corr.csv"]
         features =  read_file("../features/others")
         feature_type_path = "../Feature_Type.csv"
+
         for i in range(1, len(argv)):
             if (argv[i] == "-C"):
                 features = features + read_file("../features/cognitive")
@@ -686,21 +688,33 @@ def main(argv):
         latent_space = 150
 
         number_classes = 3
+        optimization_used = 0 # 0 Grid Search 1 Bayesian Search
         execution_mode = 0
+        model_Kfold = "autoencoder"
 
         for i in range(1, len(argv)):
             if (argv[i] == "-sMCIpMCI"):
                 number_classes = 2
                 text = "sMCI/pMCI problem"
-            elif (argv[i] == "-KFDOL"):
+            elif (argv[i] == "-KFOLDAE"):
                 execution_mode = 1
+            elif(argv[i] == "-KFOLDSHALLOW"):
+                execution_mode = 1
+                model_Kfold = argv[i + 1]
             elif (argv[i] == "-COMPARE"):
                 execution_mode = 2
             elif (argv[i] == "-PAROPTI"):
                 execution_mode = 3
+            elif (argv[i] == "-BAYESIAN"):
+                optimization_used = 1
+                
         
+
         if execution_mode == 1:
-            hyper_parameters_autoencoder(xTrain, yTrain, layer_sizes, latent_space, "relu", "relu")
+            if(model_Kfold == "autoencoder"):
+                hyper_parameters_autoencoder(xTrain, yTrain, layer_sizes, latent_space, "relu", "relu")
+            else:
+                kFold_cross_validation_shallow(SHALLOWMODELDICT[model_Kfold], xTrain, yTrain, model_Kfold)
         elif execution_mode == 2:
             kFold_cross_validation_DLmodel(xTrain, yTrain,
                            LEARNINGRATE, BATCHSIZE, 
@@ -714,7 +728,10 @@ def main(argv):
                            layer_sizes,  latent_space, 
                            "relu", number_classes, False)
         elif execution_mode == 3:
-            hyper_parameters_optimization(xTrain)
+            if(optimization_used):
+                hyper_parameters_optimization(xTrain)
+            else:
+                hyper_parameters_autoencoder(xTrain, yTrain, layer_sizes, latent_space, "relu", "relu")
         else:
             evaluate_AE_with_shallow(xTrain, xEval, yTrain, yEval,
                            LEARNINGRATE, BATCHSIZE, 

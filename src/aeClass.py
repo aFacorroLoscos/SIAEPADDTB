@@ -43,9 +43,13 @@ class Autoencoder:
         self._dropout_value = drop_out_value
         self._activation_func = activation_func
 
-        # Capas del encoder
+        # Encoder y Decoder
         self._encoder = None
         self._decoder = None
+
+        # Entrada y salida para crear los modelos
+        self._model_input = None
+        self._encoder_output = None
 
         # Modelos del Autoencoder
         self._model = None
@@ -55,9 +59,6 @@ class Autoencoder:
         self._autoencoder_train = None
         self._autoencoder_fine_tuned_train = None
 
-        # Entrada y salida para crear los modelos
-        self._model_input = None
-        self._encoder_output = None
 
         # Funcion build para crear el Autoencoder
         self._build()
@@ -70,7 +71,6 @@ class Autoencoder:
         self._build_encoder()
         self._build_decoder()
         self._build_autoencoder()
-
 
     """
         Pre: ---
@@ -130,10 +130,12 @@ class Autoencoder:
         Post: Devolvemos la salida del Encoder
     """
     def _add_encoder_output(self,x):
+        
+        input_encoder = (self._layer_sizes[-1],) if len(self._layer_sizes) != 0 else (self._input_shape,)
 
         x = Dense(self._latent_space,
                       activation = self._activation_func, 
-                      input_shape = (self._layer_sizes[-1],),
+                      input_shape = input_encoder,
                       kernel_initializer = initializers.he_normal,
                       kernel_regularizer = tensorflow.keras.regularizers.L2(0.01),
                       use_bias = True)(x)
@@ -152,7 +154,7 @@ class Autoencoder:
         
 
         x = DenseTied(self._input_shape, 
-                      activation = "linear",
+                      activation = "sigmoid",
                       use_bias = True,
                       tied_to = self._encoder.layers[1])(x)
 
@@ -356,8 +358,8 @@ class Autoencoder:
         Post: Devolvemos la prediccion de los datos de x_Data
     """
     def predict_reduced(self, data):
-        self._model = Model(inputs=self._model.input, outputs=self._model.get_layer("encoder").output)
-        return self._model.predict(data)
+
+        return self._encoder.predict(data)
 
     """
         Pre: x_Data es un conjunto de datos
@@ -394,6 +396,9 @@ class Autoencoder:
 
         return new_model.predict(x_Data)
     
+    def get_encoder_weights(self, layer_index):
+        return self._encoder.layers[1 +  3 * layer_index].get_weights()
+
     def obtain_history(self, autoencoder_type):
         model_trained = self._autoencoder_train
         metrics_name = self._model.metrics_names
