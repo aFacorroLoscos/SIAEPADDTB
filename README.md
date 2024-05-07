@@ -80,7 +80,7 @@ Para ejecutar el programa se tendrá que escribir los siguientes conjuntos de co
 
 En caso de generar los ficheros de datos procesados se deberá ejecutar el siguiente formato:
 ```
-$ python3 main.py -GENERATE [[-C] [-MRI] [-PET] [-DTI] [-BIO]] [-sMCIpMCI] [-DELETE] [-useDX]
+$ python3 main.py -GENERATE [[-C] [-MRI] [-PET] [-DTI] [-BIO] [-ALL] [-sMCIpMCI] [-DELETE] [-useDX]
 ```
 Al añadirse las opciones: `-C`, `-MRI`, `-PET`, `-DTI`, `-BIO`. Se tendrán en cuenta un conjunto de features en el procesamiento de los datos.
 

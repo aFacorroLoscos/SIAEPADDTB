@@ -399,7 +399,7 @@ class Autoencoder:
     def get_encoder_weights(self, layer_index):
         return self._encoder.layers[1 +  3 * layer_index].get_weights()
 
-    def obtain_history(self, autoencoder_type):
+    def obtain_history(self, autoencoder_type, problem_type):
         model_trained = self._autoencoder_train
         metrics_name = self._model.metrics_names
 
@@ -414,8 +414,10 @@ class Autoencoder:
             plt.figure()
             plt.plot(epochs, loss, 'r', label='Training ' + metric_name)
             plt.plot(epochs, val_loss, 'b', label='Validation ' + metric_name)
+            plt.xlabel("Epochs")
+            plt.ylabel(metric_name)
             plt.legend()
-            plt.savefig("../results/train_metrics/" + metric_name + "_" + autoencoder_type + '.png')
+            plt.savefig("../results/train_metrics/" + metric_name + "_" + autoencoder_type + problem_type + '.png', bbox_inches='tight')
      
 class DenseTied(Layer):
     def __init__(self, units,

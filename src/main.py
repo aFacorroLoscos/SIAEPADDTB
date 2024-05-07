@@ -40,12 +40,14 @@ import numpy as np
 
 
 # Variables GLOBALES PARA ENTRENAR EL AUTOENCODER
-LEARNINGRATE = 0.0019
+LEARNINGRATE = 0.004
 BATCHSIZE = 32
 DROPOUTVALUE = 0.2
 EPOCHS = 50
 
-# Diccionario de Shallow Model
+DEST_FOLDER = "CN_MCI_AD"
+
+# Diccionarios
 SHALLOWMODELDICT = {
   "randomforest": RandomForestClassifier()
 }
@@ -76,7 +78,8 @@ def one_hot(array, num_classes):
 def train_autoencoder(x_train, y_train, learning_rate, 
                       batch_size, epochs, dropout,
                      size_layers_used, latent_space, activation_func,
-                     verbose, verbose_mode, number_classes, autoencoder_model):
+                     number_classes, autoencoder_model, 
+                     verbose, verbose_train):
     # Creamos el autoencoder
     autoencoder = Autoencoder(
         input_shape = (np.shape(x_train)[1]),
@@ -92,10 +95,10 @@ def train_autoencoder(x_train, y_train, learning_rate,
     if(autoencoder_model):
         # Entrenamos el autoencoder
         autoencoder.compile(learning_rate)
-        autoencoder.train(x_train, batch_size, epochs, verbose_mode)
+        autoencoder.train(x_train, batch_size, epochs, verbose_train)
 
         if verbose:
-            autoencoder.obtain_history("normal")
+            autoencoder.obtain_history("normal", "_" + DEST_FOLDER + "_")
 
     # Entrenamos el autoencoder para que pueda
     # clasificar mediante fine tuning
@@ -106,10 +109,10 @@ def train_autoencoder(x_train, y_train, learning_rate,
 
     autoencoder.compile_fine_tuning(learning_rate/10)  
     autoencoder.set_trainable(True)
-    autoencoder.train_fine_tuning(x_train, y_train, batch_size, epochs, verbose_mode)
+    autoencoder.train_fine_tuning(x_train, y_train, batch_size, epochs, verbose_train)
 
     if verbose:
-        autoencoder.obtain_history("fine_tuning")
+        autoencoder.obtain_history("fine_tuning", "_" + DEST_FOLDER + "_")
 
     return autoencoder
 
@@ -131,10 +134,11 @@ def kFold_cross_validation_DLmodel(x_train, y_train, lr,
     recalls = []
     F1scores = []  
     for k, (train, test) in enumerate(kfold):
-        autoencoder = train_autoencoder(x_train[train], y_train[train], lr, 
-                                       batch_size, epochs, dropout_value, 
-                                       size_layers_used, latent_space,
-                                       activation_func, False, 0, number_classes, autoencoder_model)
+        autoencoder = train_autoencoder(x_train[train], y_train[train], 
+                                       lr, batch_size, epochs, dropout_value, 
+                                       size_layers_used, latent_space, activation_func, 
+                                       number_classes, autoencoder_model, 
+                                       False, 0)
         
         metrics = get_metrics(autoencoder.predict_fine_tuning(x_train[test], 0), y_train[test])
 
@@ -166,10 +170,10 @@ def kFold_cross_validation_shallow(model, x_values, y_values, model_name):
     recalls = []
     meansF1 = [] 
     for k, (train, test) in enumerate(kfold):
+        
+        new_model = clone(model).fit(x_values[train], y_values[train])
 
-        metrics = get_metrics_model(model,
-                                   x_values[train], y_values[train],
-                                   x_values[test], y_values[test], model_name)
+        metrics = get_metrics(y_values[test], new_model.predict(x_values[test]))
         
         accuracys.append(metrics[0])
         precisions.append(metrics[1])
@@ -224,7 +228,7 @@ def hyper_parameters_autoencoder(x_train, y_train, size_layers, latent_space, en
 
 def create_autoencoder_hyper_par(dropout_value):
     autoencoder = Autoencoder(
-        input_shape = 751,
+        input_shape = 740,
         layer_sizes = [600,300,200],
         latent_space = 150,
         drop_out_value = dropout_value,
@@ -236,9 +240,6 @@ def create_autoencoder_hyper_par(dropout_value):
 
 
     return autoencoder_model
-
-
-
 
 def hyper_parameters_optimization(x_train):
 
@@ -278,9 +279,9 @@ def hyper_parameters_optimization(x_train):
 def get_metrics(y_test, y_pred):
     clasifier_metrics = []
     clasifier_metrics.append(accuracy_score(y_test, y_pred))
-    clasifier_metrics.append(precision_score(y_test, y_pred, average='macro', zero_division = 0))
-    clasifier_metrics.append(recall_score(y_test, y_pred, average='macro', zero_division = 0))
-    clasifier_metrics.append(f1_score(y_test, y_pred, average='macro'))
+    clasifier_metrics.append(precision_score(y_test, y_pred, average='weighted', zero_division = 0))
+    clasifier_metrics.append(recall_score(y_test, y_pred, average='weighted', zero_division = 0))
+    clasifier_metrics.append(f1_score(y_test, y_pred, average='weighted'))
     return clasifier_metrics
 
 def show_metrics(metrics):
@@ -293,32 +294,23 @@ def show_metrics(metrics):
          pertenece cada observacion.
     Post: Devuelve las metricas del modelo de clasificación
 """
-def get_metrics_model(model, x_train, y_train, x_test, y_test, model_name):
-    metrics = get_metrics(y_test, predict_values(model, x_train, y_train, x_test, model_name))
-    print("Metrics obtained:")
+def get_metrics_model(model, x_test, y_test, model_name):
+    metrics = get_metrics(y_test, model.predict(x_test))
+    print("Metrics obtained " + model_name + ":")
     show_metrics(metrics)
     return metrics
 
-def predict_values(model, x_train, y_train, x_test, model_name):
+def train_show_time(model, x_train, y_train, model_name):
     t0  = time.time()
     model.fit(x_train, y_train)
     print("Training Time from " + model_name + ":", time.time()-t0)
-    return model.predict(x_test)
-
-def get_prob(model, x_train, y_train, x_test):
-    return model.fit(x_train, y_train).predict_proba(x_test)
-
-def got_roc_values_model(model, x_train, y_train, x_eval, y_eval):
-    model.fit(x_train, y_train)
-    yPred = model.predict(x_eval)
-    return got_roc_values(y_eval, yPred)
 
 def got_roc_values(x_data, y_data):
     fpr, tpr, thresholds = roc_curve(x_data, y_data)
     roc_auc = auc(fpr, tpr)
     return fpr, tpr, roc_auc
 
-def got_roc_values_multiclass(num_classes, y_test, y_scores, clases_numbers):
+def got_roc_values_multiclass(y_test, y_scores, num_classes):
     y_test_onehot = one_hot(y_test, num_classes)
     fpr = [0] * num_classes
     tpr = [0] * num_classes
@@ -347,150 +339,97 @@ def got_zip_class_prob(class_list, prob_ist):
     
     return zip_true_label_probs
 
-def compare_models_bar_graph(x_train, reduced_train, y_train, 
-                             x_eval, reduced_eval, y_eval, 
-                             autoencoder, filename, number_classes):
 
-    compare_model_bar_graph(x_train, reduced_train, y_train, 
-                            x_eval, reduced_eval, y_eval, 
-                            autoencoder, KNeighborsClassifier(n_neighbors = number_classes), 
-                            "KNN", filename)
-    compare_model_bar_graph(x_train, reduced_train, y_train, 
-                            x_eval, reduced_eval, y_eval, 
-                            autoencoder, DecisionTreeClassifier(), 
-                            "DT", filename)
-    compare_model_bar_graph(x_train, reduced_train, y_train,
-                            x_eval, reduced_eval, y_eval, 
-                            autoencoder, RandomForestClassifier(), 
-                            "RF", filename)
-    compare_model_bar_graph(x_train, reduced_train, y_train, 
-                            x_eval, reduced_eval, y_eval, 
-                            autoencoder, GradientBoostingClassifier(n_estimators = 20, learning_rate = 0.3), 
-                            "GB", filename)
-    compare_model_bar_graph(x_train, reduced_train, y_train,
-                            x_eval, reduced_eval, y_eval, 
-                            autoencoder, svm.SVC(kernel='linear'), 
-                            "SVM", filename)
+def compare_models_bar_graph(x_eval, reduced_eval, y_eval, 
+                             autoencoder, trained_model_dict, trained_model_dict_reduced):
     
-def compare_models_roc_curve(x_train, reduced_train, y_train, 
-                             x_eval, reduced_eval, y_eval, 
-                             autoencoder, filename, number_classes):
-    
-    compare_model_roc_curve(x_train, reduced_train, y_train, 
-                            x_eval, reduced_eval, y_eval, 
-                            autoencoder, KNeighborsClassifier(n_neighbors = number_classes), 
-                            "KNN", filename,number_classes)
-    compare_model_roc_curve(x_train, reduced_train, y_train, 
-                            x_eval, reduced_eval, y_eval, 
-                            autoencoder, DecisionTreeClassifier(), 
-                            "DT", filename, number_classes)
-    compare_model_roc_curve(x_train, reduced_train, y_train, 
-                            x_eval, reduced_eval, y_eval, 
-                            autoencoder, RandomForestClassifier(), 
-                            "RF", filename, number_classes)
-    compare_model_roc_curve(x_train, reduced_train, y_train, 
-                            x_eval, reduced_eval, y_eval, 
-                            autoencoder, GradientBoostingClassifier(n_estimators = 20, learning_rate = 0.3), 
-                            "GB", filename, number_classes)
-    compare_model_roc_curve(x_train, reduced_train, y_train, 
-                            x_eval, reduced_eval, y_eval, 
-                            autoencoder, svm.SVC(kernel='linear', probability = True), 
-                            "SVM", filename, number_classes)
+    for (name_1, model), (name_2, model_reduce) in zip(trained_model_dict.items(), trained_model_dict_reduced.items()):
+        compare_model_bar_graph(x_eval, reduced_eval, y_eval, 
+                                autoencoder, model, model_reduce,
+                                name_1)
 
-def compare_models_MAUC(x_train, reduced_train, y_train, 
-                        x_eval, reduced_eval, y_eval, 
-                        autoencoder, filename, number_classes):
+def compare_models_roc_curve(x_eval, reduced_eval, y_eval, 
+                             autoencoder, trained_model_dict, trained_model_dict_reduced, 
+                             number_classes):
+
+    for (name_1, model), (name_2, model_reduce) in zip(trained_model_dict.items(), trained_model_dict_reduced.items()):
+        compare_model_roc_curve( x_eval, reduced_eval, y_eval, 
+                                autoencoder, model, model_reduce,
+                                name_1,number_classes)
+
+def compare_models_MAUC(x_eval, reduced_eval, y_eval, 
+                        autoencoder, trained_model_dict, trained_model_dict_reduced, 
+                        number_classes):
     
-    compare_model_MAUC(x_train, reduced_train, y_train, 
-                       x_eval, reduced_eval, y_eval, 
-                       autoencoder, KNeighborsClassifier(n_neighbors=3), 
-                       "KNN", filename, number_classes)
-    compare_model_MAUC(x_train, reduced_train, y_train, 
-                       x_eval, reduced_eval, y_eval, 
-                       autoencoder, DecisionTreeClassifier(), 
-                       "DT", filename, number_classes)
-    compare_model_MAUC(x_train, reduced_train, y_train, 
-                       x_eval, reduced_eval, y_eval,
-                       autoencoder, RandomForestClassifier(), 
-                       "RF", filename, number_classes)
-    compare_model_MAUC(x_train, reduced_train, y_train,
-                       x_eval, reduced_eval, y_eval,
-                       autoencoder, GradientBoostingClassifier(n_estimators = 20, learning_rate = 0.3), 
-                       "GB", filename, number_classes)
-    compare_model_MAUC(x_train, reduced_train, y_train,
-                       x_eval, reduced_eval, y_eval,
-                       autoencoder, svm.SVC(kernel='linear', probability = True), 
-                       "SVM", filename, number_classes)
+    for (name_1, model), (name_2, model_reduce) in zip(trained_model_dict.items(), trained_model_dict_reduced.items()):
+        compare_model_mauc(x_eval, reduced_eval, y_eval, 
+                           autoencoder, model, model_reduce,
+                           name_1,number_classes)
     
-def plot_matrix(x_train, y_train, x_test, y_test, filename, using_DL, number_classes):
+
+def show_time(x_train, y_train, trained_model_dict, using_DL):
+    for name, model in trained_model_dict.items():
+        train_show_time(model, x_train, y_train, name + using_DL)
+
+def show_result(x_eval, y_eval, trained_model_dict, using_DL, number_classes):
+
+    plot_matrix(x_eval, y_eval, trained_model_dict, using_DL, number_classes)
+    
+    show_result_bar_graph(x_eval, y_eval, trained_model_dict, using_DL, number_classes)
+             
+    show_result_roc_curves(x_eval, y_eval, trained_model_dict, using_DL, number_classes)
+
+def plot_matrix(x_test, y_test, trained_model_dict, using_DL, number_classes):
     labels = ["CN","MCI","AD"]
     if number_classes == 2 :
         labels = ["sMCI", "pMCI"]
 
-
-    plot.plot_confusion_matrix(y_test, predict_values(KNeighborsClassifier(n_neighbors = number_classes), x_train, y_train, x_test, "KNN" + using_DL), "KNN" + using_DL, labels)
-    plot.plot_confusion_matrix(y_test, predict_values(RandomForestClassifier(), x_train, y_train, x_test, "RF" + using_DL), "RF" + using_DL,labels)
-    plot.plot_confusion_matrix(y_test, predict_values(DecisionTreeClassifier(), x_train, y_train, x_test, "DT" + using_DL), "DT" + using_DL,labels)
-    plot.plot_confusion_matrix(y_test, predict_values(GradientBoostingClassifier(n_estimators = 20, learning_rate = 0.3), 
-                                            x_train, y_train, x_test, "GB" + using_DL), "GB" + using_DL, labels)
-    plot.plot_confusion_matrix(y_test, predict_values(svm.SVC(kernel='linear'), x_train, y_train, x_test, "SVM" + using_DL), "SVM" + using_DL, labels)
+    for name, model in trained_model_dict.items():
+        plot.plot_confusion_matrix(y_test, model.predict(x_test), DEST_FOLDER, name + using_DL, labels)
 
 
-
-def show_result(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes):
-
-    plot_matrix(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes)
-    
-    show_result_bar_graph(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes)
-             
-    show_result_roc_curves(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes)
-
-def show_result_bar_graph(x_train, y_train, x_eval, y_eval, filename, using_DL, number_classes):
+def show_result_bar_graph(x_eval, y_eval, trained_model_dict, using_DL, number_classes):
     # Obtenemos las metricas, los valores predecidos y el modelo ya entrenado
-    knn_metrics = get_metrics_model(KNeighborsClassifier(n_neighbors = number_classes),
-                                   x_train, y_train, 
-                                   x_eval, y_eval, "KNN " + using_DL)
 
-    svm_metrics = get_metrics_model(svm.SVC(kernel='linear'),
-                                   x_train, y_train, 
-                                   x_eval, y_eval, "SVM " + using_DL)
+    accuracy, precision, recall, f1_score, x_ticks = [], [], [], [], []
+    for name, model in trained_model_dict.items():
+        metrics = get_metrics_model(model, x_eval, y_eval, name + using_DL)
 
-    dt_metrics = get_metrics_model(DecisionTreeClassifier(),
-                                  x_train, y_train, 
-                                  x_eval, y_eval, "DT " + using_DL)
+        accuracy.append(metrics[0])
+        precision.append(metrics[1])
+        recall.append(metrics[2])
+        f1_score.append(metrics[3])
 
-    rf_metrics = get_metrics_model(RandomForestClassifier(),
-                                  x_train, y_train, 
-                                x_eval, y_eval, "RF " + using_DL)
-
-    gb_metrics = get_metrics_model(GradientBoostingClassifier(n_estimators = 20, learning_rate = 0.3),
-                                  x_train, y_train, 
-                                  x_eval, y_eval, "GB " + using_DL)
+        x_ticks.append(name + using_DL)
     
-    # Dividimos las metricas para cada uno
-    accuracy = [knn_metrics[0], svm_metrics[0], dt_metrics[0], rf_metrics[0], gb_metrics[0]]
-    precision = [knn_metrics[1], svm_metrics[1], dt_metrics[1], rf_metrics[1], gb_metrics[1]]
-    recall = [knn_metrics[2], svm_metrics[2], dt_metrics[2], rf_metrics[2], gb_metrics[2]]
-    f1_score = [knn_metrics[3], svm_metrics[3], dt_metrics[3], rf_metrics[3], gb_metrics[3]]
-    
-    x_ticks = ['kNN' + using_DL,'SVM' + using_DL,'Decision Trees' + using_DL, \
-              'Random Forest' + using_DL, 'Gradient Boosting' + using_DL]
     
     # Ploteamos el grafico de barras
     plot.plot_bar_graph(5, 4, [accuracy, precision, recall, f1_score], ['r', 'g', 'b', 'y'],
-                 ["Accuracy", "Precision", "Recall", "F1Score"], x_ticks, filename, using_DL)
+                 ["Accuracy", "Precision", "Recall", "F1Score"], x_ticks, DEST_FOLDER, using_DL)
 
-def compare_model_bar_graph(x_train, reduced_train, y_train, 
-                         x_eval, reduced_eval, y_eval, 
-                         autoencoder, model, model_name, filename):
+
+def show_result_roc_curves(x_eval, y_eval, trained_model_dict, using_DL, number_classes):
     
-    model_baseline_metrics = get_metrics_model(clone(model),
-                                 x_train, y_train, 
-                                 x_eval, y_eval, model_name)
+
+    fpr_list, tpr_list, roc_auc_list, model_list = [], [], [], []
+    for name, model in trained_model_dict.items():
+        fpr, tpr, roc_auc = got_roc_values_multiclass(y_eval, model.predict_proba(x_eval), number_classes)
+
+        fpr_list.append(fpr)
+        tpr_list.append(tpr)
+        roc_auc_list.append(roc_auc)
+
+        model_list.append(name + using_DL + ' (area = %0.3f)')
     
-    model_reduce_metrics = get_metrics_model(clone(model),
-                                 reduced_train, y_train, 
-                                 reduced_eval, y_eval, model_name + " Reduced")
+    plot.plot_roc_curves(5,fpr_list, tpr_list, roc_auc_list, model_list, DEST_FOLDER, using_DL)
+
+def compare_model_bar_graph(x_eval, reduced_eval, y_eval, 
+                            autoencoder, model, model_reduce,
+                            model_name):
+    
+    model_baseline_metrics = get_metrics(y_eval, model.predict(x_eval))
+
+    model_reduce_metrics = get_metrics(y_eval, model_reduce.predict(reduced_eval))
     
     autoencoder_metrics = get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval)
 
@@ -500,95 +439,55 @@ def compare_model_bar_graph(x_train, reduced_train, y_train,
     recall = [model_baseline_metrics[2], autoencoder_metrics[2], model_reduce_metrics[2]]
     f1_score = [model_baseline_metrics[3], autoencoder_metrics[3], model_reduce_metrics[3]]
     x_ticks = [model_name,'Autoencoder', model_name + ' + DL']
-    plot.plot_bar_graph(3, 4, [accuracy, precision, recall, f1_score ], ['r', 'g', 'b', 'y'],
-                 ["Accuracy", "Precision", "Recall", "F1Score"], x_ticks, filename, "compare" + model_name)
 
-def compare_model_roc_curve(x_train, reduced_train, y_train, 
-                            x_eval, reduced_eval, y_eval, 
-                            autoencoder, model, 
-                            model_name, filename, number_classes):
+    plot.plot_bar_graph(3, 4, [accuracy, precision, recall, f1_score], ['r', 'g', 'b', 'y'],
+                 ["Accuracy", "Precision", "Recall", "F1Score"], x_ticks, DEST_FOLDER, "compare" + model_name)
 
-    bsln_fpr, bsln_tpr, bsln_roc_auc = got_roc_values_multiclass(number_classes, y_eval, get_prob(clone(model),x_train, y_train, x_eval), list(range(0,number_classes)))
 
-    red_fpr, red_tpr, red_roc_auc = got_roc_values_multiclass(number_classes, y_eval, get_prob(clone(model),reduced_train, y_train, reduced_eval), list(range(0,number_classes)))
 
-    ae_fpr, ae_tpr, ae_roc_auc = got_roc_values_multiclass(number_classes, y_eval, autoencoder.predict_proba(x_eval,0), list(range(0,number_classes)))
+def compare_model_roc_curve(x_eval, reduced_eval, y_eval, 
+                            autoencoder, model, model_reduce,
+                            model_name, number_classes):
+
+    bsln_fpr, bsln_tpr, bsln_roc_auc = got_roc_values_multiclass(y_eval, model.predict_proba(x_eval), number_classes)
+
+    ae_fpr, ae_tpr, ae_roc_auc = got_roc_values_multiclass(y_eval, autoencoder.predict_proba(x_eval,0), number_classes)
+
+    red_fpr, red_tpr, red_roc_auc = got_roc_values_multiclass(y_eval, model_reduce.predict_proba(reduced_eval) , number_classes)
+
     
     fpr_list = [bsln_fpr, ae_fpr, red_fpr]
     tpr_list = [bsln_tpr, ae_tpr, red_tpr]
     roc_auc_ist = [bsln_roc_auc, ae_roc_auc, red_roc_auc]
     model_list = ['Baseline ' + model_name + ' Mean (area = %0.3f)', 'Autoencoder (area = %0.3f)', model_name + ' + DL (area = %0.3f)']
 
-    plot.plot_roc_curves(3,fpr_list, tpr_list, roc_auc_ist, model_list,  "Macro Average", "compare" + model_name)
+    plot.plot_roc_curves(3,fpr_list, tpr_list, roc_auc_ist, model_list, DEST_FOLDER, "compare" + model_name)
 
-def compare_model_MAUC(x_train, reduced_train, y_train, 
-                     x_eval, reduced_eval, y_eval, 
-                     autoencoder, model, 
-                     model_name, filename, number_classes):
+def compare_model_mauc(x_eval, reduced_eval, y_eval, 
+                     autoencoder, model, model_reduce,
+                     model_name, number_classes):
 
-    bsl_MAUC = MAUC(got_zip_class_prob(y_eval, get_prob(clone(model),x_train, y_train, x_eval)) , number_classes)
-
-    red_MAUC = MAUC(got_zip_class_prob(y_eval, get_prob(clone(model),reduced_train, y_train, reduced_eval)) , number_classes)
+    bsl_MAUC = MAUC(got_zip_class_prob(y_eval,  model.predict_proba(x_eval)), number_classes)
 
     ae_MAUC = MAUC(got_zip_class_prob(y_eval, autoencoder.predict_proba(x_eval,0)), number_classes)
 
-    MAUC_list = [bsl_MAUC, ae_MAUC, red_MAUC]
+    red_MAUC = MAUC(got_zip_class_prob(y_eval, model_reduce.predict_proba(reduced_eval)) , number_classes)
+
+    mauc_list = [bsl_MAUC, ae_MAUC, red_MAUC]
     x_ticks = [model_name,'Autoencoder', model_name + ' + DL']
 
-    plot.plot_bar_graph(3, 2, [[], MAUC_list] , ['w', 'b'], ["", 'MAUC'], x_ticks, filename, "compareMAUC" + model_name)
-
-
-
-def show_result_roc_curves(x_train, y_train, x_eval, y_eval, 
-                           filename, using_DL, number_classes):
-
-    knn_fpr, knn_tpr, knn_roc_auc = got_roc_values_multiclass(number_classes, y_eval, 
-                                                              get_prob(KNeighborsClassifier(n_neighbors = number_classes),
-                                                                       x_train, y_train, x_eval),
-                                                              list(range(0,number_classes)))
-
-    svm_fpr, svm_tpr, svm_roc_auc = got_roc_values_multiclass(number_classes, y_eval, 
-                                                              get_prob(svm.SVC(kernel='linear', probability = True),
-                                                                       x_train, y_train, x_eval),
-                                                              list(range(0,number_classes)))
-
-    dt_fpr, dt_tpr, dt_roc_auc = got_roc_values_multiclass(number_classes, y_eval, 
-                                                           get_prob(DecisionTreeClassifier(),
-                                                                    x_train, y_train, x_eval),
-                                                           list(range(0,number_classes)))
-
-    rf_fpr, rf_tpr, rf_roc_auc = got_roc_values_multiclass(number_classes, y_eval, 
-                                                           get_prob(RandomForestClassifier(),
-                                                                    x_train, y_train, x_eval),
-                                                           list(range(0,number_classes)))
-
-    gb_fpr, gb_tpr, gb_roc_auc = got_roc_values_multiclass(number_classes, y_eval, 
-                                                           get_prob(GradientBoostingClassifier(n_estimators = 20, learning_rate = 0.3),
-                                                                    x_train, y_train, x_eval),
-                                                           list(range(0,number_classes)))
-    fpr_list = [knn_fpr, svm_fpr, dt_fpr, rf_fpr, gb_fpr]
-    tpr_list = [knn_tpr, svm_tpr, dt_tpr, rf_tpr, gb_tpr]
-    roc_auc_list =[knn_roc_auc, svm_roc_auc, dt_roc_auc, rf_roc_auc, gb_roc_auc]
-    model_list = ['KNN ' + using_DL + ' (area = %0.3f)', 
-                 'SVM ' + using_DL + '  linear (area = %0.3f)', 
-                 'Tree ' + using_DL + '  (area = %0.3f)', 
-                 'RF ' + using_DL + '  (area = %0.3f)', 
-                 'GB ' + using_DL + '  (area = %0.3f)']
-    
-    plot.plot_roc_curves(5,fpr_list, tpr_list, roc_auc_list, model_list, "Macro Average", using_DL)
-
+    plot.plot_bar_graph(3, 2, [[], mauc_list] , ['w', 'b'], ["", 'MAUC'], x_ticks, DEST_FOLDER, "compareMAUC" + model_name)
 
 def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
                              learning_rate, batch_size, 
                              epochs, dropout_value,
                              size_layers_used, latent_space,
-                             activation_func, verbose, number_classes):
+                             activation_func, number_classes, verbose):
 
     autoencoder = train_autoencoder(x_train, y_train, 
-                                learning_rate, batch_size, 
-                                epochs, dropout_value, 
-                                size_layers_used, latent_space, 
-                                activation_func, verbose, 0, number_classes, True)
+                                learning_rate, batch_size, epochs, dropout_value, 
+                                size_layers_used, latent_space, activation_func, number_classes, 
+                                True, verbose, 0)
 
     print("AUTOENCODER MODEL METRICS ")
     show_metrics(get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval))
@@ -598,14 +497,34 @@ def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
     reduced_train = autoencoder.return_reduce_attribute(x_train)
     reduced_eval = autoencoder.return_reduce_attribute(x_eval)
 
-    compare_models_roc_curve(x_train, reduced_train, y_train, 
-                          x_eval, reduced_eval, y_eval, autoencoder, "TADPOLE D4", number_classes)
-    compare_models_bar_graph(x_train, reduced_train, y_train, 
-                          x_eval, reduced_eval, y_eval, autoencoder, "TADPOLE D4", number_classes)
-    compare_models_MAUC(x_train, reduced_train, y_train, x_eval, reduced_eval, y_eval, 
-                        autoencoder, "TADPOLE D4", number_classes)
-    show_result(x_train, y_train, x_eval, y_eval,  "TADPOLE D4", "", number_classes)
-    show_result(reduced_train, y_train, reduced_eval, y_eval, "TADPOLE D4", " + DL", number_classes)
+    trained_model_dict = { "KNN": KNeighborsClassifier(n_neighbors = number_classes).fit(x_train, y_train),
+                           "SVM": svm.SVC(kernel='linear', probability = True).fit(x_train, y_train),
+                           "DT": DecisionTreeClassifier().fit(x_train, y_train),
+                           "RF": RandomForestClassifier().fit(x_train, y_train),
+                           "GB": GradientBoostingClassifier(n_estimators = 20, learning_rate = 0.3).fit(x_train, y_train)
+    }
+
+    trained_model_dict_reduced = { "KNN": KNeighborsClassifier(n_neighbors = number_classes).fit(reduced_train, y_train),
+                                   "SVM": svm.SVC(kernel='linear', probability = True).fit(reduced_train, y_train),
+                                   "DT": DecisionTreeClassifier().fit(reduced_train, y_train),
+                                   "RF": RandomForestClassifier().fit(reduced_train, y_train),
+                                   "GB": GradientBoostingClassifier(n_estimators = 20, learning_rate = 0.3).fit(reduced_train, y_train)
+    }
+    
+    # Evaluacion Modelo a Modelo
+    compare_models_roc_curve(x_eval, reduced_eval, y_eval, 
+                             autoencoder, trained_model_dict, trained_model_dict_reduced, 
+                             number_classes)
+    compare_models_bar_graph(x_eval, reduced_eval, y_eval, 
+                             autoencoder, trained_model_dict, trained_model_dict_reduced)
+
+    # Evaluacion modelo entero
+    show_result(x_eval, y_eval, trained_model_dict, "", number_classes)
+    show_result(reduced_eval, y_eval, trained_model_dict_reduced, " + DL", number_classes)
+
+    # Evaluacion de tiempo de modelos
+    show_time(x_train, y_train, trained_model_dict, "")
+    show_time(x_train, y_train, trained_model_dict, " + DL")
 
 def usageCommand():
     usage = "py main.py -GENERATE [-C] [-MRI] [-PET] [-DTI] [-BIO] [-sMCIpMCI] [-DELETE] [-useDX]]"
@@ -618,6 +537,8 @@ def usageCommand():
     exit()
 
 def main(argv):
+    global DEST_FOLDER
+
         # Error por pantalla al usar mal el comando de ejecucion del programa
     if (len(argv) > 8 or len(argv) == 0):
         usageCommand()
@@ -679,10 +600,10 @@ def main(argv):
         trainData = pd.read_csv(argv[1], sep = ";")
         evalData = pd.read_csv(argv[2], sep = ";")
         
+        
         [xTrain, yTrain] = dataSet.divideData(trainData)
         [xEval, yEval] = dataSet.divideData(evalData)
-        
-        text = "CN/MCI/AD problem"
+
 
         layer_sizes = [600,300,200]
         latent_space = 150
@@ -695,7 +616,7 @@ def main(argv):
         for i in range(1, len(argv)):
             if (argv[i] == "-sMCIpMCI"):
                 number_classes = 2
-                text = "sMCI/pMCI problem"
+                DEST_FOLDER = "sMCI_pMCI"
             elif (argv[i] == "-KFOLDAE"):
                 execution_mode = 1
             elif(argv[i] == "-KFOLDSHALLOW"):
@@ -737,7 +658,7 @@ def main(argv):
                            LEARNINGRATE, BATCHSIZE, 
                            EPOCHS, DROPOUTVALUE,
                            layer_sizes,  latent_space, 
-                           "relu", False, number_classes)
+                           "relu", number_classes, True)
 
     else:
         usageCommand()

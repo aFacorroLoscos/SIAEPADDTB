@@ -172,6 +172,10 @@ CON ESTOS VALORES
 Best val. score: 0.07305417456194041
 Best params obtained: OrderedDict([('batch_size', 32), ('model__dropout_value', 0.2), ('optimizer__learning_rate', 0.0019215330921913028)])
 
+ESTOS VALORES SI O SI
+Best val. score: 0.1332563265708888
+Best params obtained: OrderedDict([('batch_size', 32), ('model__dropout_value', 0.2), ('optimizer__learning_rate', 0.004257739722480327)])
+
 
 NN - [0.8385939741750359, 0.7819931059030706, 0.8504085492361583, 0.8084805960964777]
 AUTOENCODER - [0.8558106169296987, 0.7422804848348602, 0.8884770784759689, 0.7879090152590483]
@@ -188,4 +192,164 @@ Cross-Validation accuracy: 0.701 +/- 0.120
 Cross-Validation precision: 0.733 +/- 0.102
 Cross-Validation recall: 0.713 +/- 0.178
 Cross-Validation meanF1: 0.687 +/- 0.147
+
+
+Result obtained using Autoencoder model:
+Cross-Validation accuracy: 0.847 +/- 0.049
+Cross-Validation precision: 0.852 +/- 0.043
+Cross-Validation recall: 0.867 +/- 0.038
+Cross-Validation meanF1: 0.850 +/- 0.047
+
+Result obtained using Neural Network model:
+Cross-Validation accuracy: 0.821 +/- 0.049
+Cross-Validation precision: 0.822 +/- 0.058
+Cross-Validation recall: 0.851 +/- 0.028
+Cross-Validation meanF1: 0.818 +/- 0.060
+
+-------------------------- CN-MCI-AD
+
+Training Time from KNN: 0.07501435279846191
+Training Time from RF: 52.1497802734375
+Training Time from DT: 19.821000814437866
+Training Time from GB: 122.00187182426453
+Training Time from SVM: 16.92500114440918
+Training Time from KNN : 0.08000040054321289
+Metrics obtained:
+Accuracy: 0.841
+Precision: 0.842
+Recall: 0.841
+F1 Score: 0.841
+Training Time from SVM : 15.996999263763428
+Metrics obtained:
+Accuracy: 0.898
+Precision: 0.9
+Recall: 0.898
+F1 Score: 0.899
+Training Time from DT : 21.103010892868042
+Metrics obtained:
+Accuracy: 0.881
+Precision: 0.89
+Recall: 0.881
+F1 Score: 0.883
+Training Time from RF : 56.26199913024902
+Metrics obtained:
+Accuracy: 0.932
+Precision: 0.933
+Recall: 0.932
+F1 Score: 0.933
+Training Time from GB : 121.8847713470459
+Metrics obtained:
+Accuracy: 0.923
+Precision: 0.927
+Recall: 0.923
+F1 Score: 0.925
+Training Time from KNN + DL: 0.003000020980834961
+Training Time from RF + DL: 10.189465284347534
+Training Time from DT + DL: 1.7400007247924805
+Training Time from GB + DL: 33.89601182937622
+Training Time from SVM + DL: 1.2589993476867676
+Training Time from KNN  + DL: 0.003010988235473633
+Metrics obtained:
+Accuracy: 0.9
+Precision: 0.903
+Recall: 0.9
+F1 Score: 0.901
+Training Time from SVM  + DL: 1.240018606185913
+Metrics obtained:
+Accuracy: 0.908
+Precision: 0.91
+Recall: 0.908
+F1 Score: 0.908
+Training Time from DT  + DL: 1.5809969902038574
+Metrics obtained:
+Accuracy: 0.894
+Precision: 0.899
+Recall: 0.894
+F1 Score: 0.895
+Training Time from RF  + DL: 12.608043193817139
+Metrics obtained:
+Accuracy: 0.902
+Precision: 0.904
+Recall: 0.902
+F1 Score: 0.902
+Training Time from GB  + DL: 33.312002182006836
+Metrics obtained:
+Accuracy: 0.9
+Precision: 0.905
+Recall: 0.9
+F1 Score: 0.901
+
+
+-------------- sMCI-pMCI
+Training Time from KNN: 0.03601646423339844
+Training Time from RF: 25.224015951156616
+Training Time from DT: 9.692002296447754
+Training Time from GB: 25.36101484298706
+Training Time from SVM: 4.179007053375244
+Training Time from KNN : 0.03500175476074219
+Metrics obtained:
+Accuracy: 0.936
+Precision: 0.933
+Recall: 0.936
+F1 Score: 0.934
+Training Time from SVM : 4.396998643875122
+Metrics obtained:
+Accuracy: 0.963
+Precision: 0.962
+Recall: 0.963
+F1 Score: 0.962
+Training Time from DT : 9.967000246047974
+Metrics obtained:
+Accuracy: 0.89
+Precision: 0.898
+Recall: 0.89
+F1 Score: 0.894
+Training Time from RF : 27.495267629623413
+Metrics obtained:
+Accuracy: 0.943
+Precision: 0.937
+Recall: 0.943
+F1 Score: 0.939
+Training Time from GB : 26.747201919555664
+Metrics obtained:
+Accuracy: 0.947
+Precision: 0.943
+Recall: 0.947
+F1 Score: 0.945
+Training Time from KNN + DL: 0.0020017623901367188
+Training Time from RF + DL: 4.210999011993408
+Training Time from DT + DL: 0.6699995994567871
+Training Time from GB + DL: 6.970001220703125
+Training Time from SVM + DL: 0.32700514793395996
+Training Time from KNN  + DL: 0.0020024776458740234
+Metrics obtained:
+Accuracy: 0.937
+Precision: 0.938
+Recall: 0.937
+F1 Score: 0.938
+Training Time from SVM  + DL: 0.3359978199005127
+Metrics obtained:
+Accuracy: 0.937
+Precision: 0.941
+Recall: 0.937
+F1 Score: 0.939
+Training Time from DT  + DL: 0.7439954280853271
+Metrics obtained:
+Accuracy: 0.936
+Precision: 0.938
+Recall: 0.936
+F1 Score: 0.937
+Training Time from RF  + DL: 4.0490124225616455
+Metrics obtained:
+Accuracy: 0.935
+Precision: 0.938
+Recall: 0.935
+F1 Score: 0.937
+Training Time from GB  + DL: 6.890976190567017
+Metrics obtained:
+Accuracy: 0.939
+Precision: 0.941
+Recall: 0.939
+F1 Score: 0.94
+
 
