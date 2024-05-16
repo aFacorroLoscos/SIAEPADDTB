@@ -160,7 +160,7 @@ class Datasets:
 
             # PREPROCESS STAGE
             if problemType :
-                D1D2df = D1D2df.loc[(D1D2df['DX_bl'] == "LMCI") | ((D1D2df['DX_bl'] == "EMCI") & ((D1D2df['DX'] != "NL") | (D1D2df['DX'] != "MCI to NL")))]
+                D1D2df = D1D2df.loc[((D1D2df['DX_bl'] == "LMCI") | (D1D2df['DX_bl'] == "EMCI")) & (D1D2df['DX'] != "NL") & (D1D2df['DX'] != "MCI to NL")]
                 D1D2df = self.sMCIpMCIDiagnosisTADPOLE(D1D2df)
             else: 
                 D1D2df = self.obtainDiagnosisTADPOLE(D1D2df)
@@ -233,31 +233,31 @@ class Datasets:
     def sMCIpMCIDiagnosisTADPOLE(self, dataframe): 
         PTIDList = dataframe["PTID"].unique()
 
-        resultDataframe = pd.DataFrame(columns = ["PTID", "Diagnosis"])
+        resultDataframe = pd.DataFrame()
+
         for patientID in PTIDList:
             # Nos quedamos con solo los pacientes con el mismo PTID
-            patientDataframe = dataframe.loc[dataframe['PTID'] == patientID][["PTID", "DXCHANGE", "EXAMDATE"]]
+            patientDiagnosis = dataframe.loc[dataframe['PTID'] == patientID].copy()
 
             # Solo tenemos en cuenta para el nuevo diagnostico sMCI o pMCI aquellos con un plazo de 3 años entre consultas
-            patientDataframe["EXAMDATE"] = pd.to_datetime(patientDataframe["EXAMDATE"], format='%Y-%m-%d', errors='coerce')
-            minimun_year = min(patientDataframe['EXAMDATE'])
-            patient_3_years = patientDataframe.loc[patientDataframe["EXAMDATE"] <= minimun_year + np.timedelta64(3,'Y')]
+            patientDiagnosis['EXAMDATE'] = pd.to_datetime(patientDiagnosis["EXAMDATE"], format='%Y-%m-%d', errors='coerce')
+            minimun_year = patientDiagnosis['EXAMDATE'].min() 
+            
 
+            patient_3_years = patientDiagnosis.loc[patientDiagnosis["EXAMDATE"] <= minimun_year + np.timedelta64(3,'Y')].copy()
+            
             # Si se cuentra algún paciente con DEMENTIA or MCI to DEMENTIA entonces es Diagnostic = 1, 0 en caso contrario
             if len(patient_3_years.loc[((patient_3_years.DXCHANGE == 5) | (patient_3_years.DXCHANGE == 3))]) == 0:
-                patientDataframe["Diagnosis"] = 0
+                patient_3_years["Diagnosis"] = 0
             else:
-                patientDataframe["Diagnosis"] = 1
+                patient_3_years["Diagnosis"] = 1
 
             # Lo guardamos en un dataframe
-            resultDataframe = pd.concat([resultDataframe, patientDataframe[['PTID', 'Diagnosis']]])
+            resultDataframe = pd.concat([resultDataframe, patient_3_years])
         
-        # Hacemos merge de todos los PTDI de los pacientes con el nuevo Diagnostico
-        result = pd.merge(dataframe, resultDataframe, left_index=True, right_index=True)
-        result.drop(["PTID_y"], axis=1, inplace=True)
-        result.rename({'PTID_x': 'PTID'}, axis=1, inplace=True)
+        resultDataframe[["PTID", "Diagnosis", "DXCHANGE", "DX", "DX_bl"]].to_csv("prueba.csv", index=False, sep = ";", float_format="%.3f")
 
-        return result
+        return resultDataframe
     
     """
         Pre: ---

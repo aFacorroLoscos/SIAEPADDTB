@@ -402,10 +402,11 @@ class Autoencoder:
     def obtain_history(self, autoencoder_type, problem_type):
         model_trained = self._autoencoder_train
         metrics_name = self._model.metrics_names
-
+        
         if(autoencoder_type == "fine_tuning"):
             model_trained = self._autoencoder_fine_tuned_train
             metrics_name = self._model_fine_tuning.metrics_names
+
 
         for metric_name in metrics_name:
             loss = model_trained.history[metric_name]

@@ -28,7 +28,7 @@ from sklearn import svm
 from sklearn.base import clone
 
 # Metrics
-from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score, roc_curve, auc, mean_squared_error
+from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score, roc_curve, auc, mean_squared_error, cohen_kappa_score
 
 # Hyper parameters optimization
 from skopt import BayesSearchCV 
@@ -312,25 +312,10 @@ def got_roc_values(x_data, y_data):
 
 def got_roc_values_multiclass(y_test, y_scores, num_classes):
     y_test_onehot = one_hot(y_test, num_classes)
-    fpr = [0] * num_classes
-    tpr = [0] * num_classes
-    roc_auc = [0] * num_classes
-    for i in range(num_classes):
-        fpr[i], tpr[i], _ = roc_curve(y_test_onehot[:, i], y_scores[:, i])
-        roc_auc[i] = auc(fpr[i], tpr[i])
 
-    fpr_grid = np.linspace(0.0, 1.0, 1000)
+    fpr, tpr, _ = roc_curve(y_test_onehot.ravel(), y_scores.ravel())
 
-    # Interpolate all ROC curves at these points
-    mean_tpr = np.zeros_like(fpr_grid)
-
-    for i in range(num_classes):
-        mean_tpr += np.interp(fpr_grid, fpr[i], tpr[i])  # linear interpolation
-
-    # Average it and compute AUC
-    mean_tpr /= num_classes
-
-    return fpr_grid, mean_tpr, auc(fpr_grid, mean_tpr)
+    return fpr, tpr, auc(fpr, tpr)
 
 def got_zip_class_prob(class_list, prob_ist):
     zip_true_label_probs = []
@@ -423,6 +408,14 @@ def show_result_roc_curves(x_eval, y_eval, trained_model_dict, using_DL, number_
     
     plot.plot_roc_curves(5,fpr_list, tpr_list, roc_auc_list, model_list, DEST_FOLDER, using_DL)
 
+
+
+def show_cohen_kappa(x_eval, y_eval, trained_model_dict, using_DL):
+
+    for name, model in trained_model_dict.items():
+        print("Cohen Kappa Score obtained by " + name + using_DL + ": " + str(cohen_kappa_score(model.predict(x_eval), y_eval)))
+        
+
 def compare_model_bar_graph(x_eval, reduced_eval, y_eval, 
                             autoencoder, model, model_reduce,
                             model_name):
@@ -489,8 +482,13 @@ def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
                                 size_layers_used, latent_space, activation_func, number_classes, 
                                 True, verbose, 0)
 
-    print("AUTOENCODER MODEL METRICS ")
+    labels = ["CN","MCI","AD"]
+    if number_classes == 2 :
+        labels = ["sMCI", "pMCI"]
+    plot.plot_confusion_matrix(y_eval, autoencoder.predict_fine_tuning(x_eval, 0), DEST_FOLDER, "AE", labels)
+    print("AUTOENCODER MODEL METRICS: ")
     show_metrics(get_metrics(autoencoder.predict_fine_tuning(x_eval, 0), y_eval))
+    print("Cohen Kappa score: " + str(cohen_kappa_score(autoencoder.predict_fine_tuning(x_eval, 0), y_eval)))
 
 
     # Devolvemos los datos reducidos mediante el autoencoder
@@ -518,13 +516,17 @@ def evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
     compare_models_bar_graph(x_eval, reduced_eval, y_eval, 
                              autoencoder, trained_model_dict, trained_model_dict_reduced)
 
+
     # Evaluacion modelo entero
     show_result(x_eval, y_eval, trained_model_dict, "", number_classes)
     show_result(reduced_eval, y_eval, trained_model_dict_reduced, " + DL", number_classes)
 
+    show_cohen_kappa(x_eval, y_eval, trained_model_dict, "")
+    show_cohen_kappa(reduced_eval, y_eval, trained_model_dict_reduced, " + DL")
+
     # Evaluacion de tiempo de modelos
     show_time(x_train, y_train, trained_model_dict, "")
-    show_time(x_train, y_train, trained_model_dict, " + DL")
+    show_time(reduced_train, y_train, trained_model_dict_reduced, " + DL")
 
 def usageCommand():
     usage = "py main.py -GENERATE [-C] [-MRI] [-PET] [-DTI] [-BIO] [-sMCIpMCI] [-DELETE] [-useDX]]"
@@ -599,10 +601,14 @@ def main(argv):
 
         trainData = pd.read_csv(argv[1], sep = ";")
         evalData = pd.read_csv(argv[2], sep = ";")
-        
-        
+
+
+        print(trainData["Diagnosis"].value_counts())
+        print(evalData["Diagnosis"].value_counts())
+
         [xTrain, yTrain] = dataSet.divideData(trainData)
         [xEval, yEval] = dataSet.divideData(evalData)
+
 
 
         layer_sizes = [600,300,200]
