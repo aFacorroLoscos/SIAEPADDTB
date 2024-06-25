@@ -1,3 +1,4 @@
 *.csv
 *.drawio
-*.txt
+Resultados.txt
+Features_eliminados.txt

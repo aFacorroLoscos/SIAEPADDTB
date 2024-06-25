@@ -1,0 +1,9 @@
+El archivo que contiene todos estos datos del TADPOLE CHALLENGE y datos asociados está disponible en la website ADNI
+
+Tendrás que registrarte con ADNI y mandar una peticion para acceder a estos datos: https://adni.loni.usc.edu/data-samples/access-data/
+
+Una vez registrado tendrás que:
+- Realizar el login a ADNI
+- Clickear en el apartado Download -> Study Data -> Test Data -> Data For Challenges -> "Tadpole Challenge Data"
+
+Siguiendo esos pasos se descargara el archivod el TADPOLE CHALLENGE
