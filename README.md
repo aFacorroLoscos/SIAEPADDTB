@@ -3,6 +3,8 @@ problema de diagnóstico de la enfermedad de
 Alzheimer a partir de datos tabulares
 ======================
 
+![alt text]([https://github.com/[username]/[reponame]/blob/[branch]/image.jpg?raw=true](https://github.com/aFacorroLoscos/SIAEPADDTB/blob/main/model_proyect.png))
+
 
 Bibliotecas utilizadas y versiones de las mismas
 ---------------------
