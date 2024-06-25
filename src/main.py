@@ -770,9 +770,9 @@ def usageCommand():
     los modelos
     """
 
-    usage = "py main.py -GENERATE [-C] [-MRI] [-PET] [-DTI] [-BIO] [-ALL] [-sMCIpMCI] [-DELETE] [-useDX]"
+    usage = "python3 main.py -GENERATE [-C] [-MRI] [-PET] [-DTI] [-BIO] [-ALL] [-sMCIpMCI] [-DELETE] [-useDX]"
     print("Usage for generate Data: " + usage, file=sys.stderr)
-    usage = "py main.py -LOAD pathTrainData pathTestData [-COMPARE] [-KFOLD] [-sMCIpMCI]"
+    usage = "python3 main.py -LOAD pathTrainData pathTestData [-KFOLD] [KFOLDAE] [-COMPARE] [-BAYESIAN] [-PAROPTI] [-sMCIpMCI]"
     print("Usage for train Data: " + usage, file=sys.stderr)
     exit()
 
@@ -795,7 +795,7 @@ def main(argv):
     # Error por pantalla al usar mal el comando de ejecucion del programa
     if (len(argv) > 8 or len(argv) == 0):
         usageCommand()
-    dataSet = Datasets()
+    dataset = Datasets()
 
     # Etapa de generacion de un conjunto de datos validos para el autoencoder
     if argv[0] == "-GENERATE":
@@ -803,7 +803,7 @@ def main(argv):
         using_DX = 0
 
         # Paths del origen de los datos
-        clinicPaths= ["../Data/TADPOLE_D1_D2.csv", "../Data/TADPOLE_D3.csv", "../Data/TADPOLE_D4_corr.csv"]
+        clinic_paths= ["../Data/TADPOLE_D1_D2.csv", "../Data/TADPOLE_D3.csv", "../Data/TADPOLE_D4_corr.csv"]
         features =  read_file("../features/others")
 
         # Atributos que se tienen en cuenta para el procesado de datos
@@ -850,15 +850,15 @@ def main(argv):
                     os.remove(eval_data_Path)
 
         # Creamos el dataset de los datos médicos y prepocesamos los datos
-        [trainData, evalData] = dataSet.load_TADPOLE(clinicPaths, features, ad_or_mci, using_DX)
+        [train_data, eval_data] = dataset.load_TADPOLE(clinic_paths, features, ad_or_mci, using_DX)
     #Etapa de evaluacion de modelos
     elif argv[0] == "-LOAD":
 
         # Obtenemos los conjuntos de datos y los seperamos
-        trainData = pd.read_csv(argv[1], sep = ";")
-        evalData = pd.read_csv(argv[2], sep = ";")
-        [xTrain, yTrain] = dataSet.divide_data(trainData)
-        [xEval, yEval] = dataSet.divide_data(evalData)
+        train_data = pd.read_csv(argv[1], sep = ";")
+        eval_data = pd.read_csv(argv[2], sep = ";")
+        [x_train, y_train] = dataset.divide_data(train_data)
+        [x_eval, y_eval] = dataset.divide_data(eval_data)
 
         # Datos para el autoencoder 
         layer_sizes = [600,300,200]
@@ -880,28 +880,32 @@ def main(argv):
                 execution_mode = 1
             elif (argv[i] == "-COMPARE"):
                 execution_mode = 2
-            elif (argv[i] == "-BAYESIAN"):
-                optimization_used = 1
             elif (argv[i] == "-PAROPTI"):
                 execution_mode = 3
+            elif (argv[i] == "-BAYESIAN"):
+                optimization_used = 1
                 
         # Dependiendo del flag hara una ejecucion u otra
         if execution_mode == 1:
             if(model_Kfold == "autoencoder"):
-                # Obtencion de metricas del modelo Autoencoder
-                hyper_parameters_autoencoder(xTrain, yTrain, layer_sizes, latent_space, "relu")
+                kFold_cross_validation_DLmodel(x_train, y_train, 
+                    LEARNINGRATE, BATCHSIZE, 
+                    EPOCHS, DROPOUTVALUE,
+                    layer_sizes, latent_space,
+                    "relu", number_classes, False)
+                hyper_parameters_autoencoder(x_train, y_train, layer_sizes, latent_space, "relu")
             else:
                 # Evaluacion de metricas del modelo Random Forest mediante kfold
-                kFold_cross_validation_shallow(SHALLOWMODELDICT[model_Kfold], xTrain, yTrain, model_Kfold)
+                kFold_cross_validation_shallow(SHALLOWMODELDICT[model_Kfold], x_train, y_train, model_Kfold)
         elif execution_mode == 2:
             # Evaluacion entre Autoencoder y Red Neuronal. Se obtienen metricas segun kfdol
-            kFold_cross_validation_DLmodel(xTrain, yTrain,
+            kFold_cross_validation_DLmodel(x_train, y_train,
                 LEARNINGRATE, BATCHSIZE, 
                 EPOCHS, DROPOUTVALUE,
                 layer_sizes,  latent_space, 
                 "relu", number_classes,  True)
             
-            kFold_cross_validation_DLmodel(xTrain, yTrain,
+            kFold_cross_validation_DLmodel(x_train, y_train,
                 LEARNINGRATE, BATCHSIZE, 
                 EPOCHS, DROPOUTVALUE,
                 layer_sizes,  latent_space, 
@@ -909,14 +913,14 @@ def main(argv):
         elif execution_mode == 3:
             if(optimization_used):
                 # Obtencion de hyper parametros del autoencoder mediante bayesian optimization
-                hyper_parameters_optimization(xTrain)
+                hyper_parameters_optimization(x_train)
             else:
                 # Obtencion de metricas del modelo Autoencoder
-                hyper_parameters_autoencoder(xTrain, yTrain, layer_sizes, latent_space, "relu")
+                hyper_parameters_autoencoder(x_train, y_train, layer_sizes, latent_space, "relu")
         else:
             # Ejecucion por defecto, comparamos Autoencoder con modelos de aprendizaje tradicionales
             # Evaluando ambos modelos y viendo si es posible utilizar el autoencoder como modelo de apoyo
-            evaluate_AE_with_shallow(xTrain, xEval, yTrain, yEval,
+            evaluate_AE_with_shallow(x_train, x_eval, y_train, y_eval,
                 LEARNINGRATE, BATCHSIZE, 
                 EPOCHS, DROPOUTVALUE,
                 layer_sizes,  latent_space, 
