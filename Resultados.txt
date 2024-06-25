@@ -517,3 +517,193 @@ Training Time from SVM + DL: 0.32999205589294434
 Training Time from DT + DL: 0.33601975440979004
 Training Time from RF + DL: 1.8809795379638672
 Training Time from GB + DL: 3.9820003509521484
+-----
+THIS
+
+Accuracy: 0.943
+Precision: 0.95
+Recall: 0.943
+F1 Score: 0.946
+Cohen Kappa score: 0.6583134165829927
+
+  1/131 [..............................] - ETA: 15s
+ 23/131 [====>.........................] - ETA: 0s
+ 45/131 [=========>....................] - ETA: 0s
+ 69/131 [==============>...............] - ETA: 0s
+ 92/131 [====================>.........] - ETA: 0s
+116/131 [=========================>....] - ETA: 0s
+131/131 [==============================] - 0s 2ms/step
+
+ 1/21 [>.............................] - ETA: 2s
+21/21 [==============================] - 0s 2ms/step
+Metrics obtained KNN:
+Accuracy: 0.919
+Precision: 0.912
+Recall: 0.919
+F1 Score: 0.915
+Metrics obtained SVM:
+Accuracy: 0.942
+Precision: 0.938
+Recall: 0.942
+F1 Score: 0.939
+Metrics obtained DT:
+Accuracy: 0.897
+Precision: 0.914
+Recall: 0.897
+F1 Score: 0.904
+Metrics obtained RF:
+Accuracy: 0.94
+Precision: 0.936
+Recall: 0.94
+F1 Score: 0.934
+Metrics obtained GB:
+Accuracy: 0.948
+Precision: 0.945
+Recall: 0.948
+F1 Score: 0.946
+Metrics obtained KNN + AE:
+Accuracy: 0.945
+Precision: 0.942
+Recall: 0.945
+F1 Score: 0.943
+Metrics obtained SVM + AE:
+Accuracy: 0.94
+Precision: 0.939
+Recall: 0.94
+F1 Score: 0.94
+Metrics obtained DT + AE:
+Accuracy: 0.933
+Precision: 0.934
+Recall: 0.933
+F1 Score: 0.933
+Metrics obtained RF + AE:
+Accuracy: 0.942
+Precision: 0.94
+Recall: 0.942
+F1 Score: 0.941
+Metrics obtained GB + AE:
+Accuracy: 0.937
+Precision: 0.938
+Recall: 0.937
+F1 Score: 0.937
+Cohen Kappa Score obtained by KNN: 0.5105570561864491
+Cohen Kappa Score obtained by SVM: 0.64647385667474
+Cohen Kappa Score obtained by DT: 0.510981702750735
+Cohen Kappa Score obtained by RF: 0.6049116492654245
+Cohen Kappa Score obtained by GB: 0.688314240790656
+Cohen Kappa Score obtained by KNN + AE: 0.6747378033594377
+Cohen Kappa Score obtained by SVM + AE: 0.6645592128660055
+Cohen Kappa Score obtained by DT + AE: 0.6341084481572983
+Cohen Kappa Score obtained by RF + AE: 0.6709018567639258
+Cohen Kappa Score obtained by GB + AE: 0.6567784116402795
+Training Time from KNN: 0.024001359939575195
+Training Time from SVM: 9.772001266479492
+Training Time from DT: 6.228998184204102
+Training Time from RF: 15.841001033782959
+Training Time from GB: 17.861002445220947
+Training Time from KNN + AE: 0.0010004043579101562
+Training Time from SVM + AE: 0.34299659729003906
+Training Time from DT + AE: 0.3750154972076416
+Training Time from RF + AE: 1.953986406326294
+Training Time from GB + AE: 3.179001808166504
+
+-------------
+
+Epoch 25: early stopping
+AUTOENCODER MODEL METRICS:
+Accuracy: 0.885
+Precision: 0.89
+Recall: 0.885
+F1 Score: 0.883
+Cohen Kappa score: 0.7885870476985462
+
+  1/335 [..............................] - ETA: 38s
+ 24/335 [=>............................] - ETA: 0s
+ 48/335 [===>..........................] - ETA: 0s
+ 72/335 [=====>........................] - ETA: 0s
+ 96/335 [=======>......................] - ETA: 0s
+120/335 [=========>....................] - ETA: 0s
+145/335 [===========>..................] - ETA: 0s
+168/335 [==============>...............] - ETA: 0s
+192/335 [================>.............] - ETA: 0s
+217/335 [==================>...........] - ETA: 0s
+243/335 [====================>.........] - ETA: 0s
+268/335 [=======================>......] - ETA: 0s
+292/335 [=========================>....] - ETA: 0s
+317/335 [===========================>..] - ETA: 0s
+335/335 [==============================] - 1s 2ms/step
+
+ 1/63 [..............................] - ETA: 7s
+23/63 [=========>....................] - ETA: 0s
+45/63 [====================>.........] - ETA: 0s
+63/63 [==============================] - 0s 2ms/step
+Metrics obtained KNN:
+Accuracy: 0.841
+Precision: 0.842
+Recall: 0.841
+F1 Score: 0.841
+Metrics obtained SVM:
+Accuracy: 0.898
+Precision: 0.9
+Recall: 0.898
+F1 Score: 0.899
+Metrics obtained DT:
+Accuracy: 0.88
+Precision: 0.89
+Recall: 0.88
+F1 Score: 0.883
+Metrics obtained RF:
+Accuracy: 0.933
+Precision: 0.934
+Recall: 0.933
+F1 Score: 0.934
+Metrics obtained GB:
+Accuracy: 0.923
+Precision: 0.926
+Recall: 0.923
+F1 Score: 0.924
+Metrics obtained KNN + AE:
+Accuracy: 0.904
+Precision: 0.906
+Recall: 0.904
+F1 Score: 0.905
+Metrics obtained SVM + AE:
+Accuracy: 0.902
+Precision: 0.905
+Recall: 0.902
+F1 Score: 0.903
+Metrics obtained DT + AE:
+Accuracy: 0.895
+Precision: 0.9
+Recall: 0.895
+F1 Score: 0.897
+Metrics obtained RF + AE:
+Accuracy: 0.907
+Precision: 0.908
+Recall: 0.907
+F1 Score: 0.907
+Metrics obtained GB + AE:
+Accuracy: 0.906
+Precision: 0.908
+Recall: 0.906
+F1 Score: 0.906
+Cohen Kappa Score obtained by KNN: 0.7023473141438165
+Cohen Kappa Score obtained by SVM: 0.8099226314429464
+Cohen Kappa Score obtained by DT: 0.7785479554555658
+Cohen Kappa Score obtained by RF: 0.8751509457104573
+Cohen Kappa Score obtained by GB: 0.8566560097983771
+Cohen Kappa Score obtained by KNN + AE: 0.8212050911878932
+Cohen Kappa Score obtained by SVM + AE: 0.8176490415057067
+Cohen Kappa Score obtained by DT + AE: 0.8055791798990963
+Cohen Kappa Score obtained by RF + AE: 0.8262609581814473
+Cohen Kappa Score obtained by GB + AE: 0.8245445020190039
+Training Time from KNN: 0.0590207576751709
+Training Time from SVM: 56.08699631690979
+Training Time from DT: 18.2030131816864
+Training Time from RF: 44.553868770599365
+Training Time from GB: 97.07800531387329
+Training Time from KNN + AE: 0.001998424530029297
+Training Time from SVM + AE: 4.6800055503845215
+Training Time from DT + AE: 0.9559769630432129
+Training Time from RF + AE: 6.584001064300537
+Training Time from GB + AE: 21.791484832763672
